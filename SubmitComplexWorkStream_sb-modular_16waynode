@@ -101,6 +101,7 @@ instanciate() # create one sub-container. arguments will be passed verbatim to m
 mkdir -p ${HOME}/.job_queues/nodefiledir
 export NodeFileDir="${HOME}/.job_queues/nodefiledir/$(hostname)$(date+%s)"
 export InstanceQuitFile=${NodeFileDir}/InstanceQuitFile      # quit signal from first sub-container that terminates
+touch ${InstanceQuitFile}
 mkdir ${NodeFileDir} || exit 1
 export TODO_UPON_EXIT="rm -rf ${NodeFileDir} ; kill -9 $$"
 #
