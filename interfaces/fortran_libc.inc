@@ -1,5 +1,51 @@
 interface
 !
+  function libc_fopen(path,mode) result(stream) bind(C,name='fopen')
+    import :: C_CHAR, C_PTR
+    character(C_CHAR), dimension(*), intent(IN) :: path, mode
+    type(C_PTR) :: stream
+  end function libc_fopen
+!
+  function libc_fflush(stream) result(status) bind(C,name='fflush')
+    import :: C_INT, C_PTR
+    type(C_PTR), intent(IN), value :: stream
+    integer(C_INT) :: status
+  end function libc_fflush
+!
+  function libc_fclose(stream) result(status) bind(C,name='fclose')
+    import :: C_INT, C_PTR
+    type(C_PTR), intent(IN), value :: stream
+    integer(C_INT) :: status
+  end function libc_fclose
+!
+  function libc_fileno(stream) result(fd) bind(C,name='fileno')
+    import :: C_INT, C_PTR
+    type(C_PTR), intent(IN), value :: stream
+    integer(C_INT) :: fd
+  end function libc_fileno
+!
+  function libc_write(fd,buf,count) result(n) bind(C,name='write')
+    import :: C_INT, C_SIZE_T, C_PTR
+    type(C_PTR), intent(IN), value :: buf
+    integer(C_INT), intent(IN), value :: fd
+    integer(C_SIZE_T), intent(IN), value :: count
+    integer(C_SIZE_T) :: n
+  end function libc_write
+!
+  function libc_read(fd,buf,count) result(n) bind(C,name='read')
+    import :: C_INT, C_SIZE_T, C_PTR
+    type(C_PTR), intent(IN), value :: buf
+    integer(C_INT), intent(IN), value :: fd
+    integer(C_SIZE_T), intent(IN), value :: count
+    integer(C_SIZE_T) :: n
+  end function libc_read
+!
+  function libc_close(fd) result(status) bind(C,name='close')
+    import :: C_INT, C_SIZE_T
+    integer(C_INT), intent(IN), value :: fd
+    integer(C_INT) :: status
+  end function libc_close
+!
   function libc_strlen(str) result(slen) bind(C,name='strlen')
     import :: C_CHAR, C_SIZE_T
     character(C_CHAR), dimension(*), intent(IN) :: str
@@ -36,10 +82,15 @@ interface
     type(C_PTR), intent(IN), value :: p
   end subroutine libc_free
 !
-  subroutine libc_sleep(duration) bind(C,name='sleep')
+  function libc_usleep(duration) result(status) bind(C,name='usleep')
     use ISO_C_BINDING
     integer(C_INT), intent(IN), value :: duration
     integer(C_INT) :: status
+  end function libc_usleep
+!
+  subroutine libc_sleep(duration) bind(C,name='sleep')
+    use ISO_C_BINDING
+    integer(C_INT), intent(IN), value :: duration
   end subroutine libc_sleep
 !
 end interface
