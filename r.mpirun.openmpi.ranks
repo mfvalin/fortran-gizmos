@@ -1,0 +1,145 @@
+#!/bin/ksh 
+echo version avec /bin/ksh
+eval `cclargs_lite $0 \
+    -dir "$PWD" \
+    -pgm "invalid.program.name" \
+    -tag_output "${MPI_RUN_TAG}" "1" \
+    -copy "" \
+    -args "" \
+    -localnode "" \
+    -remotenodes "" \
+    -nodes "" \
+    -npex "${BATCH_MPI_CPUS:-1}" \
+    -npey "1" \
+    -nompisx "mpiexec" "echo mpiexec" \
+    ++ $*`
+#
+#set -x
+ProcessorsPerNode=$(grep '^processor'  /proc/cpuinfo | wc -l)
+echo FOUND $ProcessorsPerNode logical/physical processors on node
+((ProcessorsPerNode>16)) && ((ProcessorsPerNode=ProcessorsPerNode/2))
+echo USING $ProcessorsPerNode processors on node
+OMP_NUM_THREADS=${OMP_NUM_THREADS:-1}
+pgm="$pgm $MPIRUN_MPMD_PGM"
+(( npe_total=npex*npey ))
+(( npe_total_m1=npe_total-1 ))
+export R_MpirunScript=R_MpirunScript_$$
+#
+unset RPN_COMM_DOM
+set NIL $pgm ; shift
+if [[ "$2" != "" ]]
+then
+  ((ErRoR=0))
+  for i in $(seq 0 1 ${npe_total_m1}) ; do ProGrams[$i]="NoNe" ; Directories[$i]="." ; done
+  export RPN_COMM_DOM
+  export RPN_COMM_DIRS="' '"
+  ((NDomains=0))
+  ((Next=0))
+  while [[ "$1" != "" ]]
+  do
+    ((NDomains=NDomains+1))
+    if [[ -d "$1" ]] ; then Directory="$1" ; shift ; else Directory="." ; fi
+    Program="$1" ; shift ; echo Program=$Program
+    if [[ !  -x "$Program" ]] ; then echo program $Program does not exist or is not executable ; ((ErRoR=ErRoR+1)) ; fi
+    temp=${1:-0} 
+    if [[ $temp = +* ]]
+    then
+       First=$Next
+       Increment=1
+       let Last=First+${temp#+}-1
+       let Next=Last+1
+       shift
+    else
+      First=$temp
+      Increment=${2:-0}
+      Last=${3:-${npe_total_m1}}
+      if [[ "$Last" = "@" ]] ; then Last=${npe_total_m1} ; fi
+      if [[ "$1" != "" ]] ; then shift ; fi
+      if [[ "$1" != "" ]] ; then shift ; fi
+      if [[ "$1" != "" ]] ; then shift ; fi
+    fi
+    export RPN_COMM_DOM="$RPN_COMM_DOM,${First},${Increment},${Last}"
+    export RPN_COMM_DIRS="$RPN_COMM_DIRS,'$Directory'"
+    for i in $(seq ${First} ${Increment} ${Last} )
+    do
+      if [[ "${ProGrams[$i]}" != "NoNe" ]]
+      then
+        echo ERROR: duplicate program assignment "${ProGrams[$i]}" vs "$Program" in slot $i
+        ((ErRoR=ErRoR+1))
+      else
+        ProGrams[$i]="$Program"
+        Directories[$i]=$Directory
+      fi
+    done
+  done
+  export RPN_COMM_DOM="$NDomains$RPN_COMM_DOM"
+  rm -f $R_MpirunScript
+  for i in  $(seq 0 1 ${npe_total_m1})
+  do
+    if [[ !  -x "${ProGrams[$i]}" ]]
+    then
+      if [[ "${ProGrams[$i]}" = NoNe ]]
+      then
+        echo ERROR: no program specified for child $i
+      else
+        echo ${ProGrams[$i]} does not exist or is not executable "(child $i)"
+      fi
+      ((ErRoR=ErRoR+1))
+    else
+      echo "if [[ \"\${MP_CHILD:-\${PMI_RANK}}\" = \"$i\" ]] ; then ${ProGrams[$i]} $args ; StAtUs=\$? ; fi" >>$R_MpirunScript
+    fi
+  done
+#  echo RPN_COMM_DOM=$RPN_COMM_DOM
+  if [[ "$ErRoR" != "0" ]] ; then echo "$ErRoR ERROR(S) detected" ; exit 1 ; fi
+else
+  if [ ! -x $pgm ]
+  then
+    echo $pgm does not exist or is not executable
+    exit 1
+  fi
+  echo $pgm $args >$R_MpirunScript
+  echo 'StAtUs=$?' >>$R_MpirunScript
+fi
+#
+#echo ===== $R_MpirunScript =====
+#cat $R_MpirunScript
+export TMPDIR=$dir/tmpdir_$(hostname)_$$
+mkdir $TMPDIR
+export POE_SCRIPT=./POE_SCRIPT_$$
+    cat <<EOT >$POE_SCRIPT
+#!/bin/ksh
+  export MP_CHILD=\${MP_CHILD:-\${PMI_RANK}}
+  if [[ "\$R_MpirunBackgroundScript" != "" ]]
+  then
+    eval \$R_MpirunBackgroundScript &
+  fi
+  . ./$R_MpirunScript
+  if [[ "\$R_MpirunBackgroundScript" != "" ]]
+  then
+    echo waiting for child  \$MP_CHILD
+    date
+    wait
+    date
+  fi
+  exit \$StAtUs
+EOT
+chmod 755 ./$POE_SCRIPT
+echo "RPN_COMM_DOM=$RPN_COMM_DOM"
+echo "RPN_COMM_DIRS=$RPN_COMM_DIRS"
+#
+MPIRUN_EXTRA="$MPIRUN_EXTRA --bind-to-core --cpus-per-proc ${OMP_NUM_THREADS} "
+[[ -n $RANKFILE_PBS ]] && MPIRUN_EXTRA="$MPIRUN_EXTRA --rankfile $RANKFILE_PBS"
+[[ -n $NODEFILE_PBS ]] && MPIRUN_EXTRA="$MPIRUN_EXTRA --machinefile $NODEFILE_PBS"
+[[ -n ${tag_output} ]] && MPIRUN_EXTRA="-tag-output ${MPIRUN_EXTRA}"
+NPerNode="-npernode $((ProcessorsPerNode/OMP_NUM_THREADS)) "
+[[ -n $RANKFILE_PBS ]] && NPerNode=""
+((OMP_NUM_THREADS*npe_total < ProcessorsPerNode)) && NPerNode=" " && FULL_UNBIND="yes" && printf "WARNING: FULL_UNBIND flag is ON\n"
+set -x
+#which mpiexec | grep -q openmpi || MPIRUN_EXTRA=""
+u.watch_mpiexec $pgm &
+$nompisx ${NPerNode} ${MPIRUN_EXTRA} -n $npe_total ./$POE_SCRIPT
+set +x
+
+#cat $R_MpirunScript
+rm -f ./$POE_SCRIPT $MP_HOSTFILE $R_MpirunScript
+rm -rf $TMPDIR
