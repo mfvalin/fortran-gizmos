@@ -6,9 +6,14 @@ CC = gcc
 
 FC = gfortran
 
-all:	f_python f_tclsh f_wish f_demo
+all:	f_python f_tclsh f_wish f_demo libompstubs.a
 
 demo:	f_demo
+
+libompstubs.a: openmp_stubs_c.c openmp_stubs_f.F90
+	$(CC) -c -fPIC openmp_stubs_c.c
+	$(FC) -c -fPIC openmp_stubs_f.F90
+	ar rcv libompstubs.a openmp_stubs_c.o openmp_stubs_f.o
 
 f_demo:	mydemo.c Fortran_to_c_main.F90
 	$(CC) -c -Dmain=MY_C_MAIN mydemo.c
@@ -31,4 +36,4 @@ f_wish : tkAppInit.c Fortran_to_c_main.F90
 	rm -f tkAppInit.o
 
 clean:	
-	rm -f *.o f_python f_tclsh f_wish f_demo *~
+	rm -f *.o f_python f_tclsh f_wish f_demo *~ libompstubs.a
