@@ -300,13 +300,29 @@ omp_set_nest_lock(arg);
 return nlock->count;
 }
 
+#include <stdlib.h>
+#include <sys/time.h>
+
+static double scale=.000001;
+
 double omp_get_wtime(void)
 {
 /* This function does not provide a working
 * wallclock timer. Replace it with a version
 * customized for the target machine.
 */
-return 0.0;
+struct timeval tv;
+gettimeofday(&tv,NULL);
+return (tv.tv_usec * scale) + tv.tv_sec; // convert tv to double in seconds
+}
+
+double omp_get_wtime_f(void)  // to be called from fortran
+{
+/* This function does not provide a working
+* wallclock timer. Replace it with a version
+* customized for the target machine.
+*/
+return omp_get_wtime();  // call C function
 }
 
 double omp_get_wtick(void)
@@ -315,5 +331,5 @@ double omp_get_wtick(void)
 * clock tick function. Replace it with
 * a version customized for the target machine.
 */
-return 365. * 86400.;
+return .000001;  // microseconds
 }

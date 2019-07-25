@@ -279,21 +279,26 @@ endif
 return
 end function
 
-double precision function omp_get_wtime()
-! this function does not provide a working
-! wall clock timer. replace it with a version
-! customized for the target machine.
-omp_get_wtime = 0.0d0
-return
-end function
-
-double precision function omp_get_wtick()
+real *8 function omp_get_wtick()
 ! this function does not provide a working
 ! clock tick function. replace it with
 ! a version customized for the target machine.
-double precision one_year
-parameter (one_year=365.d0*86400.d0)
-omp_get_wtick = one_year
+! double precision one_year
+! parameter (one_year=365.d0*86400.d0)
+omp_get_wtick = .000001 ! microseconds
 return
 end function
+
+real *8 function omp_get_wtime()
+! use ISO_C_BINDING
+interface
+  real *8 function omp_get_wtime_c() bind(C,name='omp_get_wtime_f')
+  end function omp_get_wtime_c
+end interface
+! this function does not provide a working
+! wall clock timer. replace it with a version
+! customized for the target machine.
+omp_get_wtime = omp_get_wtime_c()
+return
+end function omp_get_wtime
 
