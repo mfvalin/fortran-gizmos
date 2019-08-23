@@ -36,4 +36,4 @@ f_wish : tkAppInit.c Fortran_to_c_main.F90
 	rm -f tkAppInit.o
 
 clean:	
-	rm -f *.o *.mod a.out f_python f_tclsh f_wish f_demo *~ libompstubs.a
+	rm -f *.o *.mod a.out f_python f_tclsh f_wish f_demo *~ libompstubs.a time_list_0*.txt
