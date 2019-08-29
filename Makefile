@@ -6,6 +6,10 @@ CC = gcc
 
 FC = gfortran
 
+FFLAGS = 
+
+CFLAGS =
+
 all:	f_python f_tclsh f_wish f_demo libompstubs.a
 
 demo:	f_demo
@@ -34,6 +38,12 @@ f_wish : tkAppInit.c Fortran_to_c_main.F90
 	$(CC) -c -Dmain=MY_C_MAIN tkAppInit.c -I/usr/include/tcl8.5
 	$(FC) -o f_wish Fortran_to_c_main.F90 tkAppInit.o -ltk8.5  -ltcl8.5
 	rm -f tkAppInit.o
+
+trace_test_mpi:
+	s.f90 $(FFLAGS) -mpi -DSELF_TEST time_trace.F90
+
+trace_test:
+	$(FC) $(FFLAGS) -DSELF_TEST -DNO_MPI time_trace.F90
 
 clean:	
 	rm -f *.o *.mod a.out f_python f_tclsh f_wish f_demo *~ libompstubs.a time_list_0*.txt
