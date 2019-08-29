@@ -21,7 +21,7 @@ module time_trace_mod
     integer(C_LONG_LONG) :: usec
   end type
 
-  type :: time_context
+  type, bind(C) :: time_context
     type(C_PTR) :: t
   end type
 
@@ -62,7 +62,6 @@ module time_trace_mod
 
     type(timeval) :: tv
     integer(C_INT) :: code! print *,'new_time_step',code,thi,tlo
-
 
     code = gettime(tv,C_NULL_PTR)
     t = tv%sec
@@ -152,11 +151,36 @@ end module
 !
 ! user callable subroutines
 !
-subroutine time_trace_init(t)                      ! create and initialize a new time trace context
+subroutine time_trace_get_buffers(t, array, larray, n) bind(C,name='TimeTraceGetBuffers')
   use ISO_C_BINDING
   use time_trace_mod
   implicit none
-  type(time_context), intent(OUT) :: t
+  type(time_context), intent(IN) :: t              ! opaque time context pointer (passed to other routines)
+  type(C_PTR), dimension(n), intent(OUT) :: array  ! to receive pointers to buffers
+  integer(C_INT), dimension(n), intent(OUT) :: larray ! to receive lengths of buffers
+  integer, intent(IN), value :: n                  ! size of array and larray
+
+  integer :: i
+  type(trace_table), pointer :: tt
+  type(bead), pointer :: current
+
+  call C_F_POINTER(t%t, tt)
+  current => tt%first
+  array = C_NULL_PTR
+  larray = 0
+  do i=1, n
+    array(i) = C_LOC(current%t(1))
+    larray(i) = current%nbent
+    current => current%next
+    if( .not. associated(current) ) return
+  enddo
+end subroutine time_trace_get_buffers
+
+subroutine time_trace_init(t) bind(C,name='TimeTraceInit') ! create and initialize a new time trace context
+  use ISO_C_BINDING
+  use time_trace_mod
+  implicit none
+  type(time_context), intent(OUT) :: t             ! opaque time context pointer (passed to other routines)
 
   type(trace_table), pointer :: tt
 
@@ -172,18 +196,15 @@ subroutine time_trace_init(t)                      ! create and initialize a new
   return
 end subroutine time_trace_init
 
-subroutine time_trace_barr(t, tag, barrier, comm, barrier_code, times)   ! insert a new time trace entry (2 entries if barrier is true)
+subroutine time_trace_barr(t, tag, barrier, comm, barrier_code)  ! insert a new time trace entry (2 entries if barrier is true)
   use ISO_C_BINDING
   use time_trace_mod
   implicit none
   external :: barrier_code
-  type(time_context), intent(IN) :: t              ! opaque time context pointer
-  integer, intent(IN) :: tag                       ! tag number for this timing point (MUST be >0 and <32K-1)
+  type(time_context), intent(IN) :: t              ! opaque time context pointer (from time_trace_init)
+  integer, intent(IN) :: tag                       ! tag number for this timing point (MUST be >0 and <128M)
   integer, intent(IN) :: comm                      ! MPI communicator (only used if barrier flag is true)
   logical, intent(IN) :: barrier                   ! if true, call MPI_barrier with timing points before and after
-  integer(kind=8), dimension(2), intent(OUT), optional :: times  
-                                                   ! times in microseconds returned to user (both values identical if no barrier)
-                                                   ! both entries will have the same tag
 
   integer :: ierr
   type(trace_table), pointer :: tt
@@ -198,40 +219,34 @@ subroutine time_trace_barr(t, tag, barrier, comm, barrier_code, times)   ! inser
     tt2 = 0                                        ! no barrier, set to zero
   endif
   call new_time_tag(tt, tag, tt1, tt2)   ! insert into timing table
-  if( present(times) ) then
-    times(1) = tt1
-    times(2) = tt2
-  endif
 
   return
 end subroutine time_trace_barr
 
-subroutine time_trace(t, tag, times)   ! insert a new time trace entry 
+subroutine time_trace(t, tag)  bind(C,name='TimeTrace') ! insert a new time trace entry (no barrier)
   use ISO_C_BINDING
   use time_trace_mod
   implicit none
-  type(time_context), intent(IN) :: t              ! opaque time context pointer
-  integer, intent(IN) :: tag                       ! tag number for this timing point (MUST be >0 and <32K-1)
-  integer(kind=8), dimension(2), intent(OUT), optional :: times   ! time in microseconds returned to user
+  type(time_context), intent(IN) :: t              ! opaque time context pointer (from time_trace_init)
+  integer, intent(IN) :: tag                       ! tag number for this timing point (MUST be >0 and <128M)
 
+  integer(kind=8), dimension(2) :: times           ! time in microseconds
   integer :: ierr
   type(trace_table), pointer :: tt
 
   call C_F_POINTER(t%t, tt)
-  if( present(times) ) then
-    times(1) = what_time_is_it()                     ! make time entry
-    times(2) = 0
-  endif
+  times(1) = what_time_is_it()                     ! make time entry
+  times(2) = 0
   call new_time_tag(tt, tag, times(1), times(2))   ! insert into timing table
 
   return
 end subroutine time_trace
 
-subroutine time_trace_step(t, n)   ! set step value for subsequent calls to time_trace
+subroutine time_trace_step(t, n) bind(C,name='TimeTraceStep')  ! set step value for subsequent calls to time_trace
   use ISO_C_BINDING
   use time_trace_mod
   implicit none
-  integer, intent(IN) :: n
+  integer, intent(IN) :: n                         ! time step number
   type(time_context), intent(IN) :: t              ! opaque time context pointer
 
   integer(kind=8) :: dummy
@@ -242,13 +257,13 @@ subroutine time_trace_step(t, n)   ! set step value for subsequent calls to time
   return
 end subroutine time_trace_step
 
-subroutine time_trace_dump(t, filename, ordinal)   ! dump timings int file filename_nnnnnn (nnnnnn from ordinal)
+subroutine time_trace_dump(t, filename, ordinal)   ! dump timings int file filename_nnnnnn.txt (nnnnnn from ordinal)
   use ISO_C_BINDING
   use time_trace_mod
   implicit none
   type(time_context), intent(IN) :: t              ! opaque time context pointer
-  character(len=*), intent(IN) :: filename
-  integer, intent(IN) :: ordinal        ! normally MPI rank
+  character(len=*), intent(IN) :: filename         ! file name prefix (will be trimmed to remove trailing blanks if any)
+  integer, intent(IN) :: ordinal                   ! numbered extension to file name (nnnnnn) (normally MPI rank)
 
   character(len=6) :: extension
   integer :: iun
@@ -332,6 +347,8 @@ program test_trace
   integer :: ierr, i, tag, rank
   integer(kind=8), dimension(2) :: times
   type(time_context) :: t
+  type(C_PTR), dimension(10) :: array
+  integer(C_INT), dimension(10) :: larray
   external :: MPI_barrier
 
   rank = 0
@@ -341,10 +358,10 @@ program test_trace
 #endif
   call time_trace_init(t)
   print *,'-----------------------------'
-  call time_trace(t, 0, times)
+  call time_trace(t, 0)
   call time_trace_step(t, 0)
   print *,'============================='
-  call time_trace_barr(t, 1, .true., MPI_COMM_WORLD, MPI_barrier, times)
+  call time_trace_barr(t, 1, .true., MPI_COMM_WORLD, MPI_barrier)
   do i = 1, 3
     call time_trace_step(t, i)
     print *,'+++++++ step =',i
@@ -352,6 +369,8 @@ program test_trace
     call time_trace_barr(t, tag, .true., MPI_COMM_WORLD, MPI_barrier)
   enddo
   call time_trace_dump(t, 'time_list', rank)
+  call time_trace_get_buffers(t, array, larray, 10)
+  write(6,'(10I6)')larray
   print *,'============================='
 #if ! defined(NO_MPI)
   call MPI_finalize(ierr)
