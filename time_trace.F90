@@ -1,4 +1,4 @@
-! Hopefully useful routines for FORTRAN
+! Hopefully useful software for FORTRAN
 ! Copyright (C) 2019  Division de Recherche en Prevision Numerique
 !                     Environnement Canada
 !
