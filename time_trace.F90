@@ -36,18 +36,18 @@ module time_trace_mod
     end function gettime
   end interface
 
-  integer, parameter :: MAX_TIMES = 1024         ! number of entries in times array
-  type :: bead
-    type(bead), pointer :: next                  ! pointer to next "bead"
+  integer, parameter :: MAX_TIMES = 8         ! number of entries in times array
+  type, bind(C) :: bead
+    type(C_PTR)         :: next                  ! pointer to next "bead"
     integer             :: nbent                 ! number of entries used in t
     integer             :: mxent                 ! max dimension of t
     integer, dimension(MAX_TIMES) :: t           ! timings
   end type                                                 
 
 
-  type :: trace_table
-    type(bead), pointer :: first                 ! pointer to first "bead"
-    type(bead), pointer :: last                  ! pointer to last (current) "bead"
+  type, bind(C) :: trace_table
+    type(C_PTR)         :: first                 ! pointer to first "bead"
+    type(C_PTR)         :: last                  ! pointer to last (current) "bead"
     logical             :: initialized           ! init flag
     integer             :: step                  ! uninitialized step number
     integer(kind=8)     :: offset                ! time offset (first time, substracted from all subsequent ones)
@@ -55,7 +55,7 @@ module time_trace_mod
 
   contains
 
-  function what_time_is_it() result (t)
+  function what_time_is_it() result (t) bind(C,name='WhatTimeIsIt')
     use ISO_C_BINDING
     implicit none
     INTEGER(C_LONG_LONG) t
@@ -69,83 +69,116 @@ module time_trace_mod
     return
   end function what_time_is_it
 
-  subroutine create_new_bead(tt)                 ! allocate a new "bead" and link it properly
+  subroutine create_new_bead(t) bind(C,name='TimeTraceCreateNewBead')                ! allocate a new "bead" and link it properly
     use ISO_C_BINDING
     implicit none
-    type(trace_table), intent(IN), pointer :: tt
+    type(time_context), intent(IN), value :: t              ! opaque time context pointer
   
-    type(bead), pointer :: temp
+    type(bead), pointer :: temp, last
+    type(trace_table), pointer :: tt
 
+    call C_F_POINTER(t%t, tt)
     allocate(temp)
     if( tt%initialized ) then
-      tt%last%next => temp                       ! link as next "bead" for last "bead"
+      call C_F_POINTER(tt%last, last)
+      last%next = C_LOC(temp)                    ! link as next "bead" for last "bead"
+!       tt%last%next = C_LOC(temp)                 ! link as next "bead" for last "bead"
     else
-      tt%first => temp                           ! special case for first "bead"
+      tt%first = C_LOC(temp)                     ! special case for first "bead"
       tt%initialized = .true.                    ! set initialized flag
     endif
-    temp%next  => NULL()                         ! no next "bead" as this will be the last "bead"
+    temp%next  = C_NULL_PTR                      ! no next "bead" as this will be the last "bead"
     temp%nbent = 0                               ! zero entries so far
     temp%mxent = MAX_TIMES                       ! max timing entries
-!     temp%t(1)  = -1                              ! void timing table
-    tt%last => temp                              ! point last to this "bead"
+    tt%last= C_LOC(temp)                         ! point last to this "bead"
     
   end subroutine create_new_bead
 
-  subroutine trace_insert(tt, val)
+  subroutine trace_insert(t, val) bind(C,name='TimeTraceInsert')
     use ISO_C_BINDING
     implicit none
-    type(trace_table), intent(IN), pointer :: tt
-    integer, intent(IN) :: val
-  
-    if(tt%last%nbent == tt%last%mxent) call create_new_bead(tt)
-    tt%last%nbent = tt%last%nbent + 1
-    tt%last%t(tt%last%nbent) = val
+    type(time_context), intent(IN), value :: t              ! opaque time context pointer
+    integer, intent(IN), value :: val
+
+    type(bead), pointer :: last
+    type(trace_table), pointer :: tt
+
+    call C_F_POINTER(t%t, tt)
+    call C_F_POINTER(tt%last, last)
+    if(last%nbent == last%mxent) call create_new_bead(t)
+    call C_F_POINTER(tt%last, last)
+    last%nbent = last%nbent + 1
+    last%t(last%nbent) = val
     
   end subroutine trace_insert
 
-  subroutine new_time_step(tt, step)             ! insert a new time step into table
+  subroutine new_time_step(t, step) bind(C,name='TimeTraceNewStep') ! insert a new time step into table
     use ISO_C_BINDING
     implicit none
-    type(trace_table), intent(IN), pointer :: tt
-    integer, intent(IN) :: step
+    type(time_context), intent(IN), value :: t              ! opaque time context pointer
+    integer, intent(IN), value :: step
   
     integer(kind=8) :: time, mask
     integer :: thi, tlo, code
-  
+    type(trace_table), pointer :: tt
+
+    call C_F_POINTER(t%t, tt)
     time = what_time_is_it()                     ! current time of day in microseconds
+    tt%offset = time
     thi  = ishft(time, -32)
     mask = -1
     mask = not(ishft(mask,32))
     tlo  = iand(time, mask)
 
     code = ishft(step,3)
-    call trace_insert(tt,code)
-    call trace_insert(tt,thi)
-    call trace_insert(tt,tlo)
+    call trace_insert(t,code)
+    call trace_insert(t,thi)
+    call trace_insert(t,tlo)
   end subroutine
 
-  subroutine new_time_tag(tt, tag, t1, t2)       ! insert tag and 1 or 2 time deltas
+  subroutine new_time_tag(t, tag, t1, t2) bind(C,name='TimeTraceNewTag') ! insert tag and 1 or 2 time deltas
     use ISO_C_BINDING
     implicit none
-    type(trace_table), intent(IN), pointer :: tt
+    type(time_context), intent(IN), value :: t              ! opaque time context pointer
     integer, intent(IN) :: tag
-    integer(kind=8), intent(IN) :: t1, t2
+    integer(kind=8), intent(IN), value :: t1, t2
   
     integer :: tm1, tm2, code
-  
+    type(trace_table), pointer :: tt
+
+    call C_F_POINTER(t%t, tt)
     tm1  = t1 - tt%offset
-    if(t2 .ne. 0) then
+    if(t2 .gt. 0) then
       tm2  = t2 - tt%offset
       code = ishft(tag,3) + 2                     ! tag followed by 2 32 bit offsets
     else
       code = ishft(tag,3) + 1                     ! tag followed by 1 32 bit offsets
     endif
 
-    call trace_insert(tt,code)
-    call trace_insert(tt,tm1)
-    if(t2 .ne. 0) call trace_insert(tt,tm2)
+    call trace_insert(t,code)
+    call trace_insert(t,tm1)
+    if(t2 .gt. 0) call trace_insert(t,tm2)
     
   end subroutine
+
+  function time_trace_create() result(t) bind(C,name='TimeTraceCreate') ! create and initialize a new time trace context
+    use ISO_C_BINDING
+    implicit none
+    type(time_context) :: t             ! opaque time context pointer (passed to other routines)
+
+    type(trace_table), pointer :: tt
+
+    allocate(tt)
+    tt%initialized = .false.
+    tt%step        = -999999
+    tt%offset = what_time_is_it()                    ! current time of day in microseconds
+    tt%first = C_NULL_PTR
+    tt%last = C_NULL_PTR
+    t%t = C_LOC(tt)
+    call create_new_bead(t)
+
+    return
+  end function time_trace_create
 
 end module
 !
@@ -155,7 +188,7 @@ subroutine time_trace_get_buffers(t, array, larray, n) bind(C,name='TimeTraceGet
   use ISO_C_BINDING
   use time_trace_mod
   implicit none
-  type(time_context), intent(IN) :: t              ! opaque time context pointer (passed to other routines)
+  type(time_context), intent(IN), value :: t              ! opaque time context pointer (passed to other routines)
   type(C_PTR), dimension(n), intent(OUT) :: array  ! to receive pointers to buffers
   integer(C_INT), dimension(n), intent(OUT) :: larray ! to receive lengths of buffers
   integer, intent(IN), value :: n                  ! size of array and larray
@@ -165,13 +198,13 @@ subroutine time_trace_get_buffers(t, array, larray, n) bind(C,name='TimeTraceGet
   type(bead), pointer :: current
 
   call C_F_POINTER(t%t, tt)
-  current => tt%first
+  call C_F_POINTER(tt%first, current)
   array = C_NULL_PTR
   larray = 0
   do i=1, n
     array(i) = C_LOC(current%t(1))
     larray(i) = current%nbent
-    current => current%next
+    call C_F_POINTER(current%next,current)
     if( .not. associated(current) ) return
   enddo
 end subroutine time_trace_get_buffers
@@ -182,16 +215,7 @@ subroutine time_trace_init(t) bind(C,name='TimeTraceInit') ! create and initiali
   implicit none
   type(time_context), intent(OUT) :: t             ! opaque time context pointer (passed to other routines)
 
-  type(trace_table), pointer :: tt
-
-  allocate(tt)
-  tt%initialized = .false.
-  tt%step        = -999999
-  tt%offset = what_time_is_it()                    ! current time of day in microseconds
-  tt%first       => NULL()
-  tt%last       => NULL()
-  call create_new_bead(tt)
-  t%t = C_LOC(tt)
+  t = time_trace_create()
 
   return
 end subroutine time_trace_init
@@ -216,9 +240,9 @@ subroutine time_trace_barr(t, tag, barrier, comm, barrier_code)  ! insert a new 
     call barrier_code(comm, ierr)                  ! barrier call if needed
     tt2 = what_time_is_it()                        ! time entry after barrier (used to measure imbalance)
   else
-    tt2 = 0                                        ! no barrier, set to zero
+    tt2 = -1                                       ! no barrier, set to zero
   endif
-  call new_time_tag(tt, tag, tt1, tt2)   ! insert into timing table
+  call new_time_tag(t, tag, tt1, tt2)              ! insert into timing table
 
   return
 end subroutine time_trace_barr
@@ -227,8 +251,8 @@ subroutine time_trace(t, tag)  bind(C,name='TimeTrace') ! insert a new time trac
   use ISO_C_BINDING
   use time_trace_mod
   implicit none
-  type(time_context), intent(IN) :: t              ! opaque time context pointer (from time_trace_init)
-  integer, intent(IN) :: tag                       ! tag number for this timing point (MUST be >0 and <128M)
+  type(time_context), intent(IN), value :: t              ! opaque time context pointer (from time_trace_init)
+  integer, intent(IN), value :: tag                       ! tag number for this timing point (MUST be >0 and <128M)
 
   integer(kind=8), dimension(2) :: times           ! time in microseconds
   integer :: ierr
@@ -236,8 +260,8 @@ subroutine time_trace(t, tag)  bind(C,name='TimeTrace') ! insert a new time trac
 
   call C_F_POINTER(t%t, tt)
   times(1) = what_time_is_it()                     ! make time entry
-  times(2) = 0
-  call new_time_tag(tt, tag, times(1), times(2))   ! insert into timing table
+  times(2) = -1
+  call new_time_tag(t, tag, times(1), times(2))    ! insert into timing table
 
   return
 end subroutine time_trace
@@ -246,14 +270,14 @@ subroutine time_trace_step(t, n) bind(C,name='TimeTraceStep')  ! set step value 
   use ISO_C_BINDING
   use time_trace_mod
   implicit none
-  integer, intent(IN) :: n                         ! time step number
-  type(time_context), intent(IN) :: t              ! opaque time context pointer
+  type(time_context), intent(IN), value :: t              ! opaque time context pointer
+  integer, intent(IN), value :: n                         ! time step number
 
   integer(kind=8) :: dummy
   type(trace_table), pointer :: tt
 
   call C_F_POINTER(t%t, tt)
-  call new_time_step(tt, n)
+  call new_time_step(t, n)
   return
 end subroutine time_trace_step
 
@@ -276,14 +300,16 @@ subroutine time_trace_dump(t, filename, ordinal)   ! dump timings int file filen
   integer(kind=8) :: tim8
 
   call C_F_POINTER(t%t, tt)
-  if( .not. associated(tt%first) ) return          ! nothing in tables
+  if( .not. c_associated(tt%first) ) return        ! nothing in tables
+!   if( .not. associated(tt%first) ) return          ! nothing in tables
 
   iun = 200
   write(extension,'(I6.6)') ordinal                                ! convert ordinal to 6 character string
   open(iun,file=trim(filename)//'_'//extension//'.txt',form='FORMATTED')   ! build filename and open it in formatted mode
 
   cstep = -999999
-  current => tt%first
+!   current => tt%first
+  call C_F_POINTER(tt%first, current)
   i = 1
   finished = .false.
 ! print *,'slots used =',current%nbent
@@ -294,7 +320,7 @@ subroutine time_trace_dump(t, filename, ordinal)   ! dump timings int file filen
     str = ""
     do j = 0, 2    ! up to 3 values
       if(i > current%nbent) then
-        current => current%next
+        call C_F_POINTER(current%next,current)
         finished = .not. associated(current)
         if(finished) return 
         i = 1
