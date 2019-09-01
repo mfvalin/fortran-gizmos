@@ -36,7 +36,11 @@ module time_trace_mod
     end function gettime
   end interface
 
+#if defined SELF_TEST
   integer, parameter :: MAX_TIMES = 8            ! number of entries in times array
+#else
+  integer, parameter :: MAX_TIMES = 1024         ! number of entries in times array
+#endif
   type, bind(C) :: bead
     type(C_PTR)         :: next                  ! pointer to next "bead"
     integer(C_INT)      :: nbent                 ! number of entries used in t
@@ -160,6 +164,8 @@ module time_trace_mod
     
   end subroutine
 
+  ! cannot return a derived type enven if it only contains a C_PTR (problems with ifort)
+  ! will not be a problem for C interface
   function time_trace_create() result(p) bind(C,name='TimeTraceCreate') ! create and initialize a new time trace context
     use ISO_C_BINDING
     implicit none
@@ -185,6 +191,17 @@ end module
 !
 ! user callable subroutines
 !
+subroutine time_trace_init(t) bind(C,name='TimeTraceInit') ! create and initialize a new time trace context
+  use ISO_C_BINDING
+  use time_trace_mod
+  implicit none
+  type(time_context), intent(OUT) :: t             ! opaque time context pointer (passed to other routines)
+
+  t%t = time_trace_create()
+
+  return
+end subroutine time_trace_init
+
 subroutine time_trace_get_buffers(t, array, larray, n) bind(C,name='TimeTraceGetBuffers')
   use ISO_C_BINDING
   use time_trace_mod
@@ -209,17 +226,6 @@ subroutine time_trace_get_buffers(t, array, larray, n) bind(C,name='TimeTraceGet
     if( .not. associated(current) ) return
   enddo
 end subroutine time_trace_get_buffers
-
-subroutine time_trace_init(t) bind(C,name='TimeTraceInit') ! create and initialize a new time trace context
-  use ISO_C_BINDING
-  use time_trace_mod
-  implicit none
-  type(time_context), intent(OUT) :: t             ! opaque time context pointer (passed to other routines)
-
-  t%t = time_trace_create()
-
-  return
-end subroutine time_trace_init
 
 subroutine time_trace_barr(t, tag, barrier, comm, barrier_code)  ! insert a new time trace entry (2 entries if barrier is true)
   use ISO_C_BINDING
