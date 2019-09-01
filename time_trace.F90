@@ -1,4 +1,4 @@
-! Hopefully useful software for FORTRAN
+! Hopefully useful software for FORTRAN and C
 ! Copyright (C) 2019  Division de Recherche en Prevision Numerique
 !                     Environnement Canada
 !
@@ -36,21 +36,21 @@ module time_trace_mod
     end function gettime
   end interface
 
-  integer, parameter :: MAX_TIMES = 8         ! number of entries in times array
+  integer, parameter :: MAX_TIMES = 8            ! number of entries in times array
   type, bind(C) :: bead
     type(C_PTR)         :: next                  ! pointer to next "bead"
-    integer             :: nbent                 ! number of entries used in t
-    integer             :: mxent                 ! max dimension of t
-    integer, dimension(MAX_TIMES) :: t           ! timings
+    integer(C_INT)      :: nbent                 ! number of entries used in t
+    integer(C_INT)      :: mxent                 ! max dimension of t
+    integer(C_INT), dimension(MAX_TIMES) :: t    ! timings
   end type                                                 
 
 
   type, bind(C) :: trace_table
     type(C_PTR)         :: first                 ! pointer to first "bead"
     type(C_PTR)         :: last                  ! pointer to last (current) "bead"
-    logical             :: initialized           ! init flag
-    integer             :: step                  ! uninitialized step number
-    integer(kind=8)     :: offset                ! time offset (first time, substracted from all subsequent ones)
+    integer(C_INT)      :: initialized           ! init flag
+    integer(C_INT)      :: step                  ! uninitialized step number
+    integer(C_LONG_LONG):: offset                ! time offset (first time, substracted from all subsequent ones)
   end type
 
   contains
@@ -79,13 +79,12 @@ module time_trace_mod
 
     call C_F_POINTER(t%t, tt)
     allocate(temp)
-    if( tt%initialized ) then
+    if( tt%initialized .ne. 0) then
       call C_F_POINTER(tt%last, last)
       last%next = C_LOC(temp)                    ! link as next "bead" for last "bead"
-!       tt%last%next = C_LOC(temp)                 ! link as next "bead" for last "bead"
     else
       tt%first = C_LOC(temp)                     ! special case for first "bead"
-      tt%initialized = .true.                    ! set initialized flag
+      tt%initialized = 1                         ! set initialized flag
     endif
     temp%next  = C_NULL_PTR                      ! no next "bead" as this will be the last "bead"
     temp%nbent = 0                               ! zero entries so far
@@ -98,7 +97,7 @@ module time_trace_mod
     use ISO_C_BINDING
     implicit none
     type(time_context), intent(IN), value :: t              ! opaque time context pointer
-    integer, intent(IN), value :: val
+    integer(C_INT), intent(IN), value :: val
 
     type(bead), pointer :: last
     type(trace_table), pointer :: tt
@@ -116,7 +115,7 @@ module time_trace_mod
     use ISO_C_BINDING
     implicit none
     type(time_context), intent(IN), value :: t              ! opaque time context pointer
-    integer, intent(IN), value :: step
+    integer(C_INT), intent(IN), value :: step
   
     integer(kind=8) :: time, mask
     integer :: thi, tlo, code
@@ -140,8 +139,8 @@ module time_trace_mod
     use ISO_C_BINDING
     implicit none
     type(time_context), intent(IN), value :: t              ! opaque time context pointer
-    integer, intent(IN) :: tag
-    integer(kind=8), intent(IN), value :: t1, t2
+    integer(C_INT), intent(IN) :: tag
+    integer(C_LONG_LONG), intent(IN), value :: t1, t2
   
     integer :: tm1, tm2, code
     type(trace_table), pointer :: tt
@@ -169,7 +168,7 @@ module time_trace_mod
     type(trace_table), pointer :: tt
 
     allocate(tt)
-    tt%initialized = .false.
+    tt%initialized = 0
     tt%step        = -999999
     tt%offset = what_time_is_it()                    ! current time of day in microseconds
     tt%first = C_NULL_PTR
@@ -189,9 +188,9 @@ subroutine time_trace_get_buffers(t, array, larray, n) bind(C,name='TimeTraceGet
   use time_trace_mod
   implicit none
   type(time_context), intent(IN), value :: t              ! opaque time context pointer (passed to other routines)
-  type(C_PTR), dimension(n), intent(OUT) :: array  ! to receive pointers to buffers
-  integer(C_INT), dimension(n), intent(OUT) :: larray ! to receive lengths of buffers
-  integer, intent(IN), value :: n                  ! size of array and larray
+  type(C_PTR), dimension(n), intent(OUT) :: array         ! to receive pointers to buffers
+  integer(C_INT), dimension(n), intent(OUT) :: larray     ! to receive lengths of buffers
+  integer(C_INT), intent(IN), value :: n                  ! size of array and larray
 
   integer :: i
   type(trace_table), pointer :: tt
@@ -252,7 +251,7 @@ subroutine time_trace(t, tag)  bind(C,name='TimeTrace') ! insert a new time trac
   use time_trace_mod
   implicit none
   type(time_context), intent(IN), value :: t              ! opaque time context pointer (from time_trace_init)
-  integer, intent(IN), value :: tag                       ! tag number for this timing point (MUST be >0 and <128M)
+  integer(C_INT), intent(IN), value :: tag                       ! tag number for this timing point (MUST be >0 and <128M)
 
   integer(kind=8), dimension(2) :: times           ! time in microseconds
   integer :: ierr
@@ -271,9 +270,8 @@ subroutine time_trace_step(t, n) bind(C,name='TimeTraceStep')  ! set step value 
   use time_trace_mod
   implicit none
   type(time_context), intent(IN), value :: t              ! opaque time context pointer
-  integer, intent(IN), value :: n                         ! time step number
+  integer(C_INT), intent(IN), value :: n                         ! time step number
 
-  integer(kind=8) :: dummy
   type(trace_table), pointer :: tt
 
   call C_F_POINTER(t%t, tt)
@@ -291,7 +289,7 @@ subroutine time_trace_dump(t, filename, ordinal)   ! dump timings int file filen
 
   character(len=6) :: extension
   integer :: iun
-  type(bead), pointer :: current, next
+  type(bead), pointer :: current
   integer :: i, j, tag, nval, cstep
   integer, dimension(2) :: tm
   type(trace_table), pointer :: tt
@@ -371,7 +369,6 @@ program test_trace
   integer, parameter :: MPI_COMM_NULL = -1
 #endif
   integer :: ierr, i, tag, rank
-  integer(kind=8), dimension(2) :: times
   type(time_context) :: t
   type(C_PTR), dimension(10) :: array
   integer(C_INT), dimension(10) :: larray
