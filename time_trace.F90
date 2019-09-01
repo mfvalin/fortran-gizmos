@@ -160,11 +160,12 @@ module time_trace_mod
     
   end subroutine
 
-  function time_trace_create() result(t) bind(C,name='TimeTraceCreate') ! create and initialize a new time trace context
+  function time_trace_create() result(p) bind(C,name='TimeTraceCreate') ! create and initialize a new time trace context
     use ISO_C_BINDING
     implicit none
-    type(time_context) :: t             ! opaque time context pointer (passed to other routines)
+    type(C_PTR) :: p
 
+    type(time_context) :: t             ! opaque time context pointer (passed to other routines)
     type(trace_table), pointer :: tt
 
     allocate(tt)
@@ -175,6 +176,7 @@ module time_trace_mod
     tt%last = C_NULL_PTR
     t%t = C_LOC(tt)
     call create_new_bead(t)
+    p = t%t
 
     return
   end function time_trace_create
@@ -214,7 +216,7 @@ subroutine time_trace_init(t) bind(C,name='TimeTraceInit') ! create and initiali
   implicit none
   type(time_context), intent(OUT) :: t             ! opaque time context pointer (passed to other routines)
 
-  t = time_trace_create()
+  t%t = time_trace_create()
 
   return
 end subroutine time_trace_init
