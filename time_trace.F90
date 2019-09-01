@@ -34,10 +34,34 @@ module time_trace_mod
       type(C_PTR), value, intent(IN) :: tz
       integer(C_INT) :: time
     end function gettime
+    function fopen(filename, mode) result(file) bind(C,name='fopen')
+      import :: C_CHAR, C_PTR
+      character(C_CHAR), dimension(*), intent(IN) :: filename, mode
+      type(C_PTR) :: file
+    end function fopen
+    function fread(what, itemsize, items, file) result(nitems) bind(C,name='fread')
+      import :: C_SIZE_T, C_PTR
+      type(C_PTR), intent(IN), value :: what
+      integer(C_SIZE_T), intent(IN), value :: itemsize, items
+      type(C_PTR), intent(IN), value :: file
+      integer(C_SIZE_T) :: nitems
+    end function fread
+    function fwrite(what, itemsize, items, file) result(nitems) bind(C,name='fwrite')
+      import :: C_SIZE_T, C_PTR
+      type(C_PTR), intent(IN), value :: what
+      integer(C_SIZE_T), intent(IN), value :: itemsize, items
+      type(C_PTR), intent(IN), value :: file
+      integer(C_SIZE_T) :: nitems
+    end function fwrite
+    function fclose(file) result(status) bind(C,name='fclose')
+      import :: C_PTR, C_INT
+      type(C_PTR), intent(IN), value :: file
+      integer(C_INT) :: status
+    end function fclose
   end interface
 
 #if defined SELF_TEST
-  integer, parameter :: MAX_TIMES = 8            ! number of entries in times array
+  integer, parameter :: MAX_TIMES = 7            ! number of entries in times array
 #else
   integer, parameter :: MAX_TIMES = 1024         ! number of entries in times array
 #endif
@@ -52,9 +76,13 @@ module time_trace_mod
   type, bind(C) :: trace_table
     type(C_PTR)         :: first                 ! pointer to first "bead"
     type(C_PTR)         :: last                  ! pointer to last (current) "bead"
+    integer(C_LONG_LONG):: offset                ! time offset (first time, substracted from all subsequent ones)
     integer(C_INT)      :: initialized           ! init flag
     integer(C_INT)      :: step                  ! uninitialized step number
-    integer(C_LONG_LONG):: offset                ! time offset (first time, substracted from all subsequent ones)
+    integer(C_INT)      :: nbeads                ! number of chained beads
+    integer(C_INT)      :: nwords                ! total number of items inserted i bead%t
+    integer(C_INT)      :: major
+    integer(C_INT)      :: minor
   end type
 
   contains
@@ -94,6 +122,7 @@ module time_trace_mod
     temp%nbent = 0                               ! zero entries so far
     temp%mxent = MAX_TIMES                       ! max timing entries
     tt%last= C_LOC(temp)                         ! point last to this "bead"
+    tt%nbeads = tt%nbeads+1                      ! bump bead count
     
   end subroutine create_new_bead
 
@@ -112,6 +141,7 @@ module time_trace_mod
     call C_F_POINTER(tt%last, last)
     last%nbent = last%nbent + 1
     last%t(last%nbent) = val
+    tt%nwords = tt%nwords + 1
     
   end subroutine trace_insert
 
@@ -150,12 +180,12 @@ module time_trace_mod
     type(trace_table), pointer :: tt
 
     call C_F_POINTER(t%t, tt)
-    tm1  = t1 - tt%offset
-    if(t2 .gt. 0) then
-      tm2  = t2 - tt%offset
-      code = ishft(tag,3) + 2                     ! tag followed by 2 32 bit offsets
+    tm1  = t1 - tt%offset                         ! subtract step offset from time
+    if(t2 .ge. 0) then
+      tm2  = t2 - tt%offset                       ! subtract step offset from time
+      code = ishft(tag,3) + 2                     ! tag followed by 2 32 bit deltas
     else
-      code = ishft(tag,3) + 1                     ! tag followed by 1 32 bit offsets
+      code = ishft(tag,3) + 1                     ! tag followed by 1 32 bit deltas
     endif
 
     call trace_insert(t,code)
@@ -176,6 +206,10 @@ module time_trace_mod
 
     allocate(tt)
     tt%initialized = 0
+    tt%nbeads = 0
+    tt%nwords = 0
+    tt%major = 1
+    tt%minor = 0
     tt%step        = -999999
     tt%offset = what_time_is_it()                    ! current time of day in microseconds
     tt%first = C_NULL_PTR
@@ -287,6 +321,38 @@ subroutine time_trace_step(t, n) bind(C,name='TimeTraceStep')  ! set step value 
   return
 end subroutine time_trace_step
 
+subroutine time_trace_dump_binary(t, filename, ordinal)   ! dump timings int file filename_nnnnnn.txt (nnnnnn from ordinal)
+  use ISO_C_BINDING
+  use time_trace_mod
+  implicit none
+  type(time_context), intent(IN) :: t              ! opaque time context pointer
+  character(len=*), intent(IN) :: filename         ! file name prefix (will be trimmed to remove trailing blanks if any)
+  integer, intent(IN) :: ordinal                   ! numbered extension to file name (nnnnnn) (normally MPI rank)
+
+  character(len=6) :: extension
+  type(bead), pointer :: current
+  type(trace_table), pointer :: tt
+  type(C_PTR) :: file
+  integer :: status, i
+  integer(C_SIZE_T) :: nw, nwds, nsize
+
+  call C_F_POINTER(t%t, tt)
+  call C_F_POINTER(tt%first, current)
+
+  if( .not. c_associated(tt%first) ) return        ! nothing in tables
+  write(extension,'(I6.6)') ordinal                ! convert ordinal to 6 character string
+  file = fopen(trim(filename)//'_'//extension//'.dat'//achar(0), "w"//achar(0))
+
+  do i=1, tt%nbeads
+    nwds = current%nbent
+    nsize = 4
+    nw = fwrite(C_LOC(current%t(1)), nsize, nwds, file)
+    call C_F_POINTER(current%next,current)
+  enddo
+  status = fclose(file)
+  return
+end subroutine time_trace_dump_binary
+
 subroutine time_trace_dump(t, filename, ordinal)   ! dump timings int file filename_nnnnnn.txt (nnnnnn from ordinal)
   use ISO_C_BINDING
   use time_trace_mod
@@ -299,10 +365,10 @@ subroutine time_trace_dump(t, filename, ordinal)   ! dump timings int file filen
   integer :: iun
   type(bead), pointer :: current
   integer :: i, j, tag, nval, cstep
-  integer, dimension(2) :: tm
+  integer, dimension(10) :: tm
   type(trace_table), pointer :: tt
   logical :: finished
-  character(len=5) :: str
+!   character(len=5) :: str
   integer(kind=8) :: tim8
 
   call C_F_POINTER(t%t, tt)
@@ -316,6 +382,7 @@ subroutine time_trace_dump(t, filename, ordinal)   ! dump timings int file filen
   cstep = -999999
 !   current => tt%first
   call C_F_POINTER(tt%first, current)
+  write(iun,1)tt%major,tt%minor,tt%nbeads,tt%nwords  ! version(major,minor), nbeads, nwords
   i = 1
   finished = .false.
 ! print *,'slots used =',current%nbent
@@ -323,8 +390,9 @@ subroutine time_trace_dump(t, filename, ordinal)   ! dump timings int file filen
     tag = 0
     tm  = 0
     nval = 0
-    str = ""
-    do j = 0, 2    ! up to 3 values
+!     str = ""
+    j = 0
+    do while(j < 4)    ! up to 4 values (including tag/step marker)
       if(i > current%nbent) then
         call C_F_POINTER(current%next,current)
         finished = .not. associated(current)
@@ -334,35 +402,40 @@ subroutine time_trace_dump(t, filename, ordinal)   ! dump timings int file filen
       if(j == 0) then       ! tag or step
         tag = current%t(i)
         nval = iand(tag, 3)
-        if(nval == 0) nval = 2
+        if(nval == 0) nval = 2     ! nval is zero for a step (followed by 2 values)
         if(iand(tag,3) == 0) then 
-          str = 'step'
+!           str = 'step'
           cstep = ishft(tag,-3)
           tag = -1
         else
-          str='tag '
+!           str='tag '
           tag = ishft(tag,-3)
         endif
-      else
-        if(j > nval) exit
+      else   ! j > 0
         tm(j) = current%t(i)
       endif
       i = i + 1    ! next value
+      if(j >= nval) goto 100
+      j = j + 1    ! next iteration
     enddo
+100 continue
     if(tag == -1) then
       tim8 = tm(1)
       tim8 = ishft(tim8,32)
       tim8 = tim8 + tm(2)
-      write(iun,'(I10,",",I10,",",I18,",",I2)')cstep,tag,tim8,0
+      write(iun,2)cstep,tag,tim8,0
     else
-      write(iun,'(3(I10,","),I10)')cstep,tag,tm
+      write(iun,1)cstep,tag,tm(1:nval)
     endif
-! write(6,'(A,4(Z8.8,","))')str,cstep,tag,tm
+
   enddo
-  
   close(iun)
 
   return
+
+1 format(10I10)
+2 format(2I10,I18,I2)
+
 end subroutine time_trace_dump
 
 #if defined SELF_TEST
@@ -395,14 +468,20 @@ program test_trace
   call time_trace_barr(t, 1, .true., MPI_COMM_WORLD, MPI_barrier)
   do i = 1, 3
     call time_trace_step(t, i)
-    print *,'+++++++ step =',i
+    print *,'+++++++ start step =',i
     tag = 10*i+1
     call time_trace_barr(t, tag, .true., MPI_COMM_WORLD, MPI_barrier)
+    print *,'+++++++ end   step =',i
+    tag = 10*i+2
+    call time_trace(t, tag)
   enddo
+  call time_trace_step(t, 4)
+  print *,'============================='
+  call time_trace(t, 999999)
   call time_trace_dump(t, 'time_list', rank)
+  call time_trace_dump_binary(t, 'time_list', rank)
   call time_trace_get_buffers(t, array, larray, 10)
   write(6,'(10I6)')larray
-  print *,'============================='
 #if ! defined(NO_MPI)
   call MPI_finalize(ierr)
 #endif
