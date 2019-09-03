@@ -46,4 +46,4 @@ trace_test:
 	$(FC) $(FFLAGS) -DSELF_TEST -DNO_MPI time_trace.F90
 
 clean:	
-	rm -f *.o *.mod a.out f_python f_tclsh f_wish f_demo *~ libompstubs.a time_list_0*.txt
+	rm -f *.o *.mod a.out f_python f_tclsh f_wish f_demo *~ libompstubs.a time_list_0*.txt time_list_0*.dat

@@ -24,13 +24,21 @@ interface
     type(time_context), intent(OUT) :: t             ! opaque time context pointer (passed to other routines)
   end subroutine time_trace_init
 
-  subroutine time_trace_dump(t, filename, ordinal)   ! dump timings int file filename_nnnnnn.txt (nnnnnn from ordinal)
+  subroutine time_trace_dump_text(t, filename, ordinal)   ! dump timings int file filename_nnnnnn.txt (nnnnnn from ordinal)
     import :: time_context
     implicit none
     type(time_context), intent(IN) :: t              ! opaque time context pointer (from time_trace_init)
     character(len=*), intent(IN) :: filename         ! file name prefix (will be trimmed to remove trailing blanks if any)
     integer, intent(IN) :: ordinal                   ! numbered extension to file name (nnnnnn) (normally MPI rank)
-  end subroutine time_trace_dump
+  end subroutine time_trace_dump_text
+
+  subroutine time_trace_dump_binary(t, filename, ordinal)   ! dump timings int file filename_nnnnnn.txt (nnnnnn from ordinal)
+    import :: time_context
+    implicit none
+    type(time_context), intent(IN) :: t              ! opaque time context pointer
+    character(len=*), intent(IN) :: filename         ! file name prefix (will be trimmed to remove trailing blanks if any)
+    integer, intent(IN) :: ordinal                   ! numbered extension to file name (nnnnnn) (normally MPI rank)
+  end subroutine time_trace_dump_binary
 
   subroutine time_trace_step(t, n) bind(C,name='TimeTraceStep')  ! set step value for subsequent calls to time_trace
     import :: time_context, C_INT

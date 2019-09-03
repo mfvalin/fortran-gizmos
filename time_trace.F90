@@ -1,4 +1,4 @@
-! Hopefully useful software for FORTRAN and C
+! Hopefully useful software for FORTRAN
 ! Copyright (C) 2019  Division de Recherche en Prevision Numerique
 !                     Environnement Canada
 !
@@ -15,252 +15,14 @@
 module time_trace_mod
   use ISO_C_BINDING
   implicit none
-
-  type, bind(C) :: timeval
-    integer(C_LONG_LONG) :: sec
-    integer(C_LONG_LONG) :: usec
-  end type
-
-  type, bind(C) :: time_context
-    type(C_PTR) :: t
-  end type
-
-  interface
-    function gettime(tv,tz) result(time) BIND(C,name='gettimeofday')
-      use iso_c_binding
-      import :: timeval
-      implicit none
-      type(timeval), intent(OUT)     :: tv
-      type(C_PTR), value, intent(IN) :: tz
-      integer(C_INT) :: time
-    end function gettime
-    function fopen(filename, mode) result(file) bind(C,name='fopen')
-      import :: C_CHAR, C_PTR
-      character(C_CHAR), dimension(*), intent(IN) :: filename, mode
-      type(C_PTR) :: file
-    end function fopen
-    function fread(what, itemsize, items, file) result(nitems) bind(C,name='fread')
-      import :: C_SIZE_T, C_PTR
-      type(C_PTR), intent(IN), value :: what
-      integer(C_SIZE_T), intent(IN), value :: itemsize, items
-      type(C_PTR), intent(IN), value :: file
-      integer(C_SIZE_T) :: nitems
-    end function fread
-    function fwrite(what, itemsize, items, file) result(nitems) bind(C,name='fwrite')
-      import :: C_SIZE_T, C_PTR
-      type(C_PTR), intent(IN), value :: what
-      integer(C_SIZE_T), intent(IN), value :: itemsize, items
-      type(C_PTR), intent(IN), value :: file
-      integer(C_SIZE_T) :: nitems
-    end function fwrite
-    function fclose(file) result(status) bind(C,name='fclose')
-      import :: C_PTR, C_INT
-      type(C_PTR), intent(IN), value :: file
-      integer(C_INT) :: status
-    end function fclose
-  end interface
-
-#if defined SELF_TEST
-  integer, parameter :: MAX_TIMES = 7            ! number of entries in times array
-#else
-  integer, parameter :: MAX_TIMES = 1024         ! number of entries in times array
-#endif
-  type, bind(C) :: bead
-    type(C_PTR)         :: next                  ! pointer to next "bead"
-    integer(C_INT)      :: nbent                 ! number of entries used in t
-    integer(C_INT)      :: mxent                 ! max dimension of t
-    integer(C_INT), dimension(MAX_TIMES) :: t    ! timings
-  end type                                                 
-
-
-  type, bind(C) :: trace_table
-    type(C_PTR)         :: first                 ! pointer to first "bead"
-    type(C_PTR)         :: last                  ! pointer to last (current) "bead"
-    integer(C_LONG_LONG):: offset                ! time offset (first time, substracted from all subsequent ones)
-    integer(C_INT)      :: initialized           ! init flag
-    integer(C_INT)      :: step                  ! uninitialized step number
-    integer(C_INT)      :: nbeads                ! number of chained beads
-    integer(C_INT)      :: nwords                ! total number of items inserted i bead%t
-    integer(C_INT)      :: major
-    integer(C_INT)      :: minor
-  end type
-
-  contains
-
-  function what_time_is_it() result (t) bind(C,name='WhatTimeIsIt')
-    use ISO_C_BINDING
-    implicit none
-    INTEGER(C_LONG_LONG) t
-
-    type(timeval) :: tv
-    integer(C_INT) :: code! print *,'new_time_step',code,thi,tlo
-
-    code = gettime(tv,C_NULL_PTR)
-    t = tv%sec
-    t = t * 1000000 + tv%usec
-    return
-  end function what_time_is_it
-
-  subroutine create_new_bead(t) bind(C,name='TimeTraceCreateNewBead')                ! allocate a new "bead" and link it properly
-    use ISO_C_BINDING
-    implicit none
-    type(time_context), intent(IN), value :: t              ! opaque time context pointer
-  
-    type(bead), pointer :: temp, last
-    type(trace_table), pointer :: tt
-
-    call C_F_POINTER(t%t, tt)
-    allocate(temp)
-    if( tt%initialized .ne. 0) then
-      call C_F_POINTER(tt%last, last)
-      last%next = C_LOC(temp)                    ! link as next "bead" for last "bead"
-    else
-      tt%first = C_LOC(temp)                     ! special case for first "bead"
-      tt%initialized = 1                         ! set initialized flag
-    endif
-    temp%next  = C_NULL_PTR                      ! no next "bead" as this will be the last "bead"
-    temp%nbent = 0                               ! zero entries so far
-    temp%mxent = MAX_TIMES                       ! max timing entries
-    tt%last= C_LOC(temp)                         ! point last to this "bead"
-    tt%nbeads = tt%nbeads+1                      ! bump bead count
-    
-  end subroutine create_new_bead
-
-  subroutine trace_insert(t, val) bind(C,name='TimeTraceInsert')
-    use ISO_C_BINDING
-    implicit none
-    type(time_context), intent(IN), value :: t              ! opaque time context pointer
-    integer(C_INT), intent(IN), value :: val
-
-    type(bead), pointer :: last
-    type(trace_table), pointer :: tt
-
-    call C_F_POINTER(t%t, tt)
-    call C_F_POINTER(tt%last, last)
-    if(last%nbent == last%mxent) call create_new_bead(t)
-    call C_F_POINTER(tt%last, last)
-    last%nbent = last%nbent + 1
-    last%t(last%nbent) = val
-    tt%nwords = tt%nwords + 1
-    
-  end subroutine trace_insert
-
-  subroutine new_time_step(t, step) bind(C,name='TimeTraceNewStep') ! insert a new time step into table
-    use ISO_C_BINDING
-    implicit none
-    type(time_context), intent(IN), value :: t              ! opaque time context pointer
-    integer(C_INT), intent(IN), value :: step
-  
-    integer(kind=8) :: time, mask
-    integer :: thi, tlo, code
-    type(trace_table), pointer :: tt
-
-    call C_F_POINTER(t%t, tt)
-    time = what_time_is_it()                     ! current time of day in microseconds
-    tt%offset = time
-    thi  = ishft(time, -32)
-    mask = -1
-    mask = not(ishft(mask,32))
-    tlo  = iand(time, mask)
-
-    code = ishft(step,3)
-    call trace_insert(t,code)
-    call trace_insert(t,thi)
-    call trace_insert(t,tlo)
-  end subroutine
-
-  subroutine new_time_tag(t, tag, t1, t2) bind(C,name='TimeTraceNewTag') ! insert tag and 1 or 2 time deltas
-    use ISO_C_BINDING
-    implicit none
-    type(time_context), intent(IN), value :: t              ! opaque time context pointer
-    integer(C_INT), intent(IN) :: tag
-    integer(C_LONG_LONG), intent(IN), value :: t1, t2
-  
-    integer :: tm1, tm2, code
-    type(trace_table), pointer :: tt
-
-    call C_F_POINTER(t%t, tt)
-    tm1  = t1 - tt%offset                         ! subtract step offset from time
-    if(t2 .ge. 0) then
-      tm2  = t2 - tt%offset                       ! subtract step offset from time
-      code = ishft(tag,3) + 2                     ! tag followed by 2 32 bit deltas
-    else
-      code = ishft(tag,3) + 1                     ! tag followed by 1 32 bit deltas
-    endif
-
-    call trace_insert(t,code)
-    call trace_insert(t,tm1)
-    if(t2 .gt. 0) call trace_insert(t,tm2)
-    
-  end subroutine
-
-  ! cannot return a derived type enven if it only contains a C_PTR (problems with ifort)
-  ! will not be a problem for C interface
-  function time_trace_create() result(p) bind(C,name='TimeTraceCreate') ! create and initialize a new time trace context
-    use ISO_C_BINDING
-    implicit none
-    type(C_PTR) :: p
-
-    type(time_context) :: t             ! opaque time context pointer (passed to other routines)
-    type(trace_table), pointer :: tt
-
-    allocate(tt)
-    tt%initialized = 0
-    tt%nbeads = 0
-    tt%nwords = 0
-    tt%major = 1
-    tt%minor = 0
-    tt%step        = -999999
-    tt%offset = what_time_is_it()                    ! current time of day in microseconds
-    tt%first = C_NULL_PTR
-    tt%last = C_NULL_PTR
-    t%t = C_LOC(tt)
-    call create_new_bead(t)
-    p = t%t
-
-    return
-  end function time_trace_create
+#define NEED_PRIVATE
+#include <time_trace.hf>
+#undef NEED_PRIVATE
 
 end module
 !
-! user callable subroutines
+! user callable subroutines that need to be written in Fortran because of interfacing issues
 !
-subroutine time_trace_init(t) bind(C,name='TimeTraceInit') ! create and initialize a new time trace context
-  use ISO_C_BINDING
-  use time_trace_mod
-  implicit none
-  type(time_context), intent(OUT) :: t             ! opaque time context pointer (passed to other routines)
-
-  t%t = time_trace_create()
-
-  return
-end subroutine time_trace_init
-
-subroutine time_trace_get_buffers(t, array, larray, n) bind(C,name='TimeTraceGetBuffers')
-  use ISO_C_BINDING
-  use time_trace_mod
-  implicit none
-  type(time_context), intent(IN), value :: t              ! opaque time context pointer (passed to other routines)
-  type(C_PTR), dimension(n), intent(OUT) :: array         ! to receive pointers to buffers
-  integer(C_INT), dimension(n), intent(OUT) :: larray     ! to receive lengths of buffers
-  integer(C_INT), intent(IN), value :: n                  ! size of array and larray
-
-  integer :: i
-  type(trace_table), pointer :: tt
-  type(bead), pointer :: current
-
-  call C_F_POINTER(t%t, tt)
-  call C_F_POINTER(tt%first, current)
-  array = C_NULL_PTR
-  larray = 0
-  do i=1, n
-    array(i) = C_LOC(current%t(1))
-    larray(i) = current%nbent
-    call C_F_POINTER(current%next,current)
-    if( .not. associated(current) ) return
-  enddo
-end subroutine time_trace_get_buffers
-
 subroutine time_trace_barr(t, tag, barrier, comm, barrier_code)  ! insert a new time trace entry (2 entries if barrier is true)
   use ISO_C_BINDING
   use time_trace_mod
@@ -272,10 +34,8 @@ subroutine time_trace_barr(t, tag, barrier, comm, barrier_code)  ! insert a new 
   logical, intent(IN) :: barrier                   ! if true, call MPI_barrier with timing points before and after
 
   integer :: ierr
-  type(trace_table), pointer :: tt
   integer(kind=8) :: tt1, tt2
 
-  call C_F_POINTER(t%t, tt)
   tt1 = what_time_is_it() 
   if(barrier) then
     call barrier_code(comm, ierr)                  ! barrier call if needed
@@ -288,39 +48,6 @@ subroutine time_trace_barr(t, tag, barrier, comm, barrier_code)  ! insert a new 
   return
 end subroutine time_trace_barr
 
-subroutine time_trace(t, tag)  bind(C,name='TimeTrace') ! insert a new time trace entry (no barrier)
-  use ISO_C_BINDING
-  use time_trace_mod
-  implicit none
-  type(time_context), intent(IN), value :: t              ! opaque time context pointer (from time_trace_init)
-  integer(C_INT), intent(IN), value :: tag                       ! tag number for this timing point (MUST be >0 and <128M)
-
-  integer(kind=8), dimension(2) :: times           ! time in microseconds
-  integer :: ierr
-  type(trace_table), pointer :: tt
-
-  call C_F_POINTER(t%t, tt)
-  times(1) = what_time_is_it()                     ! make time entry
-  times(2) = -1
-  call new_time_tag(t, tag, times(1), times(2))    ! insert into timing table
-
-  return
-end subroutine time_trace
-
-subroutine time_trace_step(t, n) bind(C,name='TimeTraceStep')  ! set step value for subsequent calls to time_trace
-  use ISO_C_BINDING
-  use time_trace_mod
-  implicit none
-  type(time_context), intent(IN), value :: t              ! opaque time context pointer
-  integer(C_INT), intent(IN), value :: n                         ! time step number
-
-  type(trace_table), pointer :: tt
-
-  call C_F_POINTER(t%t, tt)
-  call new_time_step(t, n)
-  return
-end subroutine time_trace_step
-
 subroutine time_trace_dump_binary(t, filename, ordinal)   ! dump timings int file filename_nnnnnn.txt (nnnnnn from ordinal)
   use ISO_C_BINDING
   use time_trace_mod
@@ -329,31 +56,21 @@ subroutine time_trace_dump_binary(t, filename, ordinal)   ! dump timings int fil
   character(len=*), intent(IN) :: filename         ! file name prefix (will be trimmed to remove trailing blanks if any)
   integer, intent(IN) :: ordinal                   ! numbered extension to file name (nnnnnn) (normally MPI rank)
 
-  character(len=6) :: extension
-  type(bead), pointer :: current
-  type(trace_table), pointer :: tt
-  type(C_PTR) :: file
-  integer :: status, i
-  integer(C_SIZE_T) :: nw, nwds, nsize
+  interface
+    subroutine c_dump_binary(t, filename, ordinal) bind(C,name='TimeTraceDumpBinary')
+      import :: time_context, C_CHAR, C_INT
+      type(time_context), intent(IN), value :: t
+      character(C_CHAR), dimension(*), intent(IN) :: filename
+      integer(C_INT), intent(IN), value :: ordinal
+    end subroutine c_dump_binary
+  end interface
 
-  call C_F_POINTER(t%t, tt)
-  call C_F_POINTER(tt%first, current)
+  call c_dump_binary(t, trim(filename)//achar(0), ordinal) ! call C routine with properly terminated string
 
-  if( .not. c_associated(tt%first) ) return        ! nothing in tables
-  write(extension,'(I6.6)') ordinal                ! convert ordinal to 6 character string
-  file = fopen(trim(filename)//'_'//extension//'.dat'//achar(0), "w"//achar(0))
-
-  do i=1, tt%nbeads
-    nwds = current%nbent
-    nsize = 4
-    nw = fwrite(C_LOC(current%t(1)), nsize, nwds, file)
-    call C_F_POINTER(current%next,current)
-  enddo
-  status = fclose(file)
   return
 end subroutine time_trace_dump_binary
 
-subroutine time_trace_dump(t, filename, ordinal)   ! dump timings int file filename_nnnnnn.txt (nnnnnn from ordinal)
+subroutine time_trace_dump_text(t, filename, ordinal)   ! dump timings int file filename_nnnnnn.txt (nnnnnn from ordinal)
   use ISO_C_BINDING
   use time_trace_mod
   implicit none
@@ -361,88 +78,23 @@ subroutine time_trace_dump(t, filename, ordinal)   ! dump timings int file filen
   character(len=*), intent(IN) :: filename         ! file name prefix (will be trimmed to remove trailing blanks if any)
   integer, intent(IN) :: ordinal                   ! numbered extension to file name (nnnnnn) (normally MPI rank)
 
-  character(len=6) :: extension
-  integer :: iun
-  type(bead), pointer :: current
-  integer :: i, j, tag, nval, cstep
-  integer, dimension(10) :: tm
-  type(trace_table), pointer :: tt
-  logical :: finished
-!   character(len=5) :: str
-  integer(kind=8) :: tim8
+  interface
+    subroutine c_dump_text(t, filename, ordinal) bind(C,name='TimeTraceDumpText')
+      import :: time_context, C_CHAR, C_INT
+      type(time_context), intent(IN), value :: t
+      character(C_CHAR), dimension(*), intent(IN) :: filename
+      integer(C_INT), intent(IN), value :: ordinal
+    end subroutine c_dump_text
+  end interface
 
-  call C_F_POINTER(t%t, tt)
-  if( .not. c_associated(tt%first) ) return        ! nothing in tables
-!   if( .not. associated(tt%first) ) return          ! nothing in tables
-
-  iun = 200
-  write(extension,'(I6.6)') ordinal                                ! convert ordinal to 6 character string
-  open(iun,file=trim(filename)//'_'//extension//'.txt',form='FORMATTED')   ! build filename and open it in formatted mode
-
-  cstep = -999999
-!   current => tt%first
-  call C_F_POINTER(tt%first, current)
-  write(iun,1)tt%major,tt%minor,tt%nbeads,tt%nwords  ! version(major,minor), nbeads, nwords
-  i = 1
-  finished = .false.
-! print *,'slots used =',current%nbent
-  do while(.not. finished)
-    tag = 0
-    tm  = 0
-    nval = 0
-!     str = ""
-    j = 0
-    do while(j < 4)    ! up to 4 values (including tag/step marker)
-      if(i > current%nbent) then
-        call C_F_POINTER(current%next,current)
-        finished = .not. associated(current)
-        if(finished) return 
-        i = 1
-      endif
-      if(j == 0) then       ! tag or step
-        tag = current%t(i)
-        nval = iand(tag, 3)
-        if(nval == 0) nval = 2     ! nval is zero for a step (followed by 2 values)
-        if(iand(tag,3) == 0) then 
-!           str = 'step'
-          cstep = ishft(tag,-3)
-          tag = -1
-        else
-!           str='tag '
-          tag = ishft(tag,-3)
-        endif
-      else   ! j > 0
-        tm(j) = current%t(i)
-      endif
-      i = i + 1    ! next value
-      if(j >= nval) goto 100
-      j = j + 1    ! next iteration
-    enddo
-100 continue
-    if(tag == -1) then
-      tim8 = tm(1)
-      tim8 = ishft(tim8,32)
-      tim8 = tim8 + tm(2)
-      write(iun,2)cstep,tag,tim8,0
-    else
-      write(iun,1)cstep,tag,tm(1:nval)
-    endif
-
-  enddo
-  close(iun)
-
-  return
-
-1 format(10I10)
-2 format(2I10,I18,I2)
-
-end subroutine time_trace_dump
+  call c_dump_text(t, trim(filename)//achar(0), ordinal) ! call C routine with properly terminated string
+end subroutine time_trace_dump_text
 
 #if defined SELF_TEST
 program test_trace
   use ISO_C_BINDING
   implicit none
-  include 'time_trace.inc'
+#include <time_trace.hf>
 #if ! defined(NO_MPI)
   include 'mpif.h'
 #else
@@ -478,7 +130,7 @@ program test_trace
   call time_trace_step(t, 4)
   print *,'============================='
   call time_trace(t, 999999)
-  call time_trace_dump(t, 'time_list', rank)
+  call time_trace_dump_text(t, 'time_list', rank)
   call time_trace_dump_binary(t, 'time_list', rank)
   call time_trace_get_buffers(t, array, larray, 10)
   write(6,'(10I6)')larray
