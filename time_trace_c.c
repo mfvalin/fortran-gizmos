@@ -13,6 +13,7 @@
 //  Lesser General Public License for more details.
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -195,6 +196,7 @@ void TimeTraceDumpBinary(time_context t, char *filename, int ordinal){  // dump 
   for(i=0 ; i < tt->nbeads && current != NULL; i++){
     nw = current->nbent;
     nwr = write(fd, current->t, sizeof(int)*nw);
+    if(nwr != sizeof(int)*nw) exit(1);
     current = (bead *)current->next;
   }
   close(fd);
@@ -208,7 +210,6 @@ void TimeTraceDumpText(time_context t, char *filename, int ordinal){  // dump in
   trace_table *tt = t.t;
   char fname[4096];
   int cstep = 99999999;
-  ssize_t  nwr;
   FILE *fd;
   bead *current;
   int i, tag, nval, j;

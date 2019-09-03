@@ -97,11 +97,12 @@ program test_trace
 #include <time_trace.hf>
 #if ! defined(NO_MPI)
   include 'mpif.h'
+  integer :: ierr
 #else
   integer, parameter :: MPI_COMM_WORLD = 0
   integer, parameter :: MPI_COMM_NULL = -1
 #endif
-  integer :: ierr, i, tag, rank
+  integer :: i, tag, rank
   type(time_context) :: t
   type(C_PTR), dimension(10) :: array
   integer(C_INT), dimension(10) :: larray
@@ -143,6 +144,7 @@ end program
 #if defined(NO_MPI)
   subroutine MPI_barrier(dummy1, dummy2)
     integer, intent(IN) :: dummy1, dummy2
+    if(loc(dummy1) == loc(dummy2)) print *,'OOPS !!'
   end subroutine MPI_barrier
 #endif
 #endif
