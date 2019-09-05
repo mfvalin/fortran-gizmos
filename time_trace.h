@@ -44,13 +44,13 @@ typedef struct{
   void *next;
   int nbent;
   int mxent;
-  int t[MAX_TIMES];
+  unsigned int t[MAX_TIMES];
 }bead;
 
 typedef struct{
   void *first;
   void *last;
-  long long offset;
+  unsigned long long offset;
   int initialized;
   int step;
   int nbeads;

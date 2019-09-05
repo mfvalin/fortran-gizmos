@@ -213,8 +213,8 @@ void TimeTraceDumpText(time_context t, char *filename, int ordinal){  // dump in
   FILE *fd;
   bead *current;
   int i, tag, nval, j;
-  long long tm[10];
-  long long tm8;
+  unsigned long long tm[10];
+  unsigned long long tm8;
 
   if(tt == NULL) return;
 
@@ -227,30 +227,29 @@ void TimeTraceDumpText(time_context t, char *filename, int ordinal){  // dump in
     tag = -2; nval = 0; for(j=0 ; j<10 ; j++) tm[j] = 0 ;
     for(j=0 ; j<4 ; j++){
       if(i >= current->nbent){
-	current = (bead *)current->next;
-	if(current == NULL) return;
-	i = 0;
+  current = (bead *)current->next;
+  if(current == NULL) return;
+  i = 0;
       }
       if(j == 0){       // tag or step
-	tag = current->t[i]; nval = tag & 3 ; 
-	if(nval == 0){
-	  cstep = tag >> 3 ; tag = -1; nval = 2; // fprintf(stderr,"step %d nval %d\n",cstep,nval);
-	}else{
-	  tag = tag >> 3; //  fprintf(stderr,"tag   %d nval %d\n",tag,nval);
-	}
+  tag = current->t[i]; nval = tag & 3 ; 
+  if(nval == 0){
+    cstep = tag >> 3 ; tag = -1; nval = 2; // fprintf(stderr,"step %d nval %d\n",cstep,nval);
+  }else{
+    tag = tag >> 3; //  fprintf(stderr,"tag   %d nval %d\n",tag,nval);
+  }
       }else{           // j > 0, data
-	tm[j-1] = current->t[i];
+  tm[j-1] = current->t[i];
       }
       i++;
       if(j >= nval) break;
     }
     if(tag == -1) { 
       tm8 = (tm[0] << 32) | tm[1] ;
-      fprintf(fd,"%d %d %Ld %d",cstep, tag, tm8, 0);
-printf("DUMP %16.16LX %16.16LX %16.16LX\n",tm[0],tm[1],tm8);
+      fprintf(fd,"%d %d %llu %d",cstep, tag, tm8, 0);
     }else{
       fprintf(fd,"%d %d ",cstep, tag);
-      for(j=0 ; j<nval ; j++) fprintf(fd,"%Ld ",tm[j]);
+      for(j=0 ; j<nval ; j++) fprintf(fd,"%llu ",tm[j]);
     }
     fprintf(fd,"\n");
   }

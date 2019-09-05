@@ -42,11 +42,11 @@ f_wish : tkAppInit.c Fortran_to_c_main.F90
 trace_test_mpi:
 	s.f90 $(FFLAGS) -mpi -DSELF_TEST time_trace.F90
 
-trace_test_f: time_trace_c.c time_trace.F90
+trace_test_f: time_trace_c.c time_trace.F90 time_trace.h
 	$(CC) $(CFLAGS) -I. -c -DSELF_TEST time_trace_c.c
 	$(FC) $(FFLAGS) -I. -DSELF_TEST -DNO_MPI time_trace.F90 time_trace_c.o -o trace_test_f
 
-trace_test_c: time_trace_c.c
+trace_test_c: time_trace_c.c time_trace.h
 	$(CC) $(CFLAGS) -I. -DSELF_TEST -DC_SELF_TEST time_trace_c.c -o trace_test_c
 
 clean:	
