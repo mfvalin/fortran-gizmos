@@ -213,8 +213,8 @@ void TimeTraceDumpText(time_context t, char *filename, int ordinal){  // dump in
   FILE *fd;
   bead *current;
   int i, tag, nval, j;
-  unsigned int tm[10];
-  unsigned long long tm8;
+  long long tm[10];
+  long long tm8;
 
   if(tt == NULL) return;
 
@@ -245,11 +245,12 @@ void TimeTraceDumpText(time_context t, char *filename, int ordinal){  // dump in
       if(j >= nval) break;
     }
     if(tag == -1) { 
-      tm8 = tm[0] ; tm8 <<= 32 ; tm8 |= tm[1] ;
-      fprintf(fd,"%d %d %Lu %d",cstep, tag, tm8, 0);
+      tm8 = (tm[0] << 32) | tm[1] ;
+      fprintf(fd,"%d %d %Ld %d",cstep, tag, tm8, 0);
+printf("DUMP %16.16LX %16.16LX %16.16LX\n",tm[0],tm[1],tm8);
     }else{
       fprintf(fd,"%d %d ",cstep, tag);
-      for(j=0 ; j<nval ; j++) fprintf(fd,"%d ",tm[j]);
+      for(j=0 ; j<nval ; j++) fprintf(fd,"%Ld ",tm[j]);
     }
     fprintf(fd,"\n");
   }
