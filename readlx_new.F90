@@ -693,10 +693,9 @@ end module
 
 !
 !**FONCTION QLXCHR     RETOURNE UN CARACTERE A LA FOIS D'UNE LIGNE
-      FUNCTION QLXCHR()
+      CHARACTER(len=1) FUNCTION QLXCHR()  ! get next character from current input stream
       use readlx_internals
       implicit none
-      CHARACTER *1 QLXCHR
 !
 !
 !AUTEUR M.VALIN  RPN  JUIN 1983
@@ -734,13 +733,13 @@ end module
             IF((READREC.GT.CURREC))THEN
                READREC=0
             ENDIF 
-            IF((READREC.EQ.0))THEN
+            IF((READREC.EQ.0))THEN                               ! NOT READING FROM PAST HISTORY
                READ(INPFILE,'(A80)',END=10)INLINE(21:100)        ! read pos 21 and after
                CURREC = CURREC + 1
-               WRITE(TMPFILE,'(A80)',REC=CURREC)INLINE(21:100)
-            ELSE 
+               WRITE(TMPFILE,'(A80)',REC=CURREC)INLINE(21:100)   ! WRITE LINE TO PAST HISTORY
+            ELSE                                                 ! READING FROM PAST HISTORY
                READ(TMPFILE,'(A80)',REC=READREC)INLINE(21:100)
-               READREC = READREC + 1
+               READREC = READREC + 1                             ! bump record number
             ENDIF 
             INLINE(1:20) = ' '                                   ! set pushback area to blanks
             COMMENT = .FALSE.
@@ -778,18 +777,16 @@ end module
          ENDIF 
       ENDIF 
       RETURN
+
 10    INLINE = ' END$'  ! store END line if hitting end of file
       QLXCHR=' '        ! return space character
       EOFL=.TRUE.       ! set end of file marker
       LAST=5            ! last char is 5
       NC=2              ! next position is 2
-!
-
       RETURN
       END
-
 !
-      SUBROUTINE QLXDBG
+      SUBROUTINE QLXDBG ! print line buffer and some associated information
       use readlx_internals
       implicit none
 !       COMMON /QLXBUFF/ NC,LAST,INPFILE,EOFL,NERR,SKIPFLG
@@ -800,11 +797,8 @@ end module
 !       CHARACTER *101 INLINE
       WRITE(6,*) 'NC=',NC,'LAST=',LAST,'INPFILE=',INPFILE
       WRITE(6,'(1X,A101)')INLINE(1:101)
-!
-
       RETURN
       END
-
 !
 !**FUNCTION QLXDTYP  TYPE OF A DATA ITEM
       FUNCTION QLXDTYP(ITEM)
@@ -2275,7 +2269,7 @@ end module
 !       DATA KARMOT /04/
 !
 
-      WRITE(LINEFMT,'(A,I2,A)') '(25 A',KARMOT,')'
+      WRITE(LINEFMT,'(A,I2,A)') '(25 A',KARMOT,')'  ! format to print an input line, fix it if increasing length of line buffer
       KERRMAX = 999999
       KERR = 0    ! TEMPORAIRE
       IF((KERR.LT.0 ))THEN
@@ -2297,7 +2291,7 @@ end module
       nomscra='XXXXQLX'
       tmpfile = 0
       write(6,*)"================ NEW READLX ==================="
-      ier = fnom(tmpfile,nomscra,'D77+SCRATCH+FMT',20)
+      ier = fnom(tmpfile,nomscra,'D77+SCRATCH+FMT',20)  ! open tempfile for 80 character records (fix this if increasing length of line buffer)
       CALL QLXINX(QLXPRNT,'PRINT',IDUM,0202,2)
       CALL QLXINX(QLXNVAR,'DEFINE',IDUM,0202,2)
       CALL QLXINX(QLXUNDF,'UNDEF',IDUM,0101,2)
