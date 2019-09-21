@@ -87,19 +87,25 @@
 !          LE BIT 0 EST LE BIT SIGNE DU PREMIER MOT DU TABLEAU
 !  LONG    LONGUEUR EN BIT DU CHAMP A INSERER (PAS PLUS DE 32 BITS)
 !
+! TODO:
+! QLXDTYP:  TO BE REVISITED, POINTLESS THE WAY IT IS BEING USED
+!
 module readlx_internals
   implicit none
 !   COMMON /PARMADR/NPRM,NARG,DOPE(41),PARM(101)
 !   COMMON /PARMADR/NDOPES,DOPEA(42),DOPES(101),ADR(41)
 !   INTEGER NARG,NPRM,DOPE,NDOPE,DOPEA,DOPES,PARM
 !   Integer*8 ADR
-  integer, parameter :: MAX_ARGS = 40
-  integer, parameter :: MAX_ARGL = 100
+  integer, parameter :: MAX_ARGS = 40    ! max number of arguments
+  integer, parameter :: MAX_ARGL = 100   ! max number of items for ALL arguments
   integer, save      :: NPRM = 0
-  integer, save      :: NARG = 0
+  integer, save      :: NARG = 0         ! number of arguments for current call
   integer, save      :: NDOPES = 0
-  integer, save      :: DOPEA(MAX_ARGS+2),DOPE(MAX_ARGS+1)
-  integer, dimension(MAX_ARGL+1), save         :: DOPES
+  ! argument K starts at DOPES(DOPEA(K)), ends at DOPES(DOPEA(K+1)-1)
+  ! the length of argument K is DOPE(K)
+  integer, save, dimension(MAX_ARGS+2)         :: DOPEA       ! start index of arguments in DOPES
+  integer, save, dimension(MAX_ARGS+1)         :: DOPE        ! number of items in arguments
+  integer, dimension(MAX_ARGL+1), save         :: DOPES       ! all argument values
   integer, dimension(MAX_ARGL+1), save         :: PARM = 0
   integer(kind=8), dimension(MAX_ARGS+1), save :: ADR = 0
 
@@ -128,7 +134,7 @@ module readlx_internals
 !   INTEGER KARMOT
 !   COMMON /QLXFMT/ LINEFMT
 !   COMMON /QLXFMT2/ KARMOT
-  CHARACTER(len=20), save :: LINEFMT
+  CHARACTER(len=20), save :: LINEFMT   ! format used to read a line of input into an array
   INTEGER, save :: KARMOT = 4
 
 !       COMMON /QLXBUFF/ NC,LAST,INPFILE,EOFL,NERR,SKIPFLG
@@ -163,11 +169,10 @@ module readlx_internals
 !       DATA NAMES /256 * ' '/
 !       DATA NENTRY /0/
 end module
-
 !
 !**FONCTION ARGDIMS LONGUEUR D'ARGUMENTS (APPEL VIA READLX)
 !
-      INTEGER FUNCTION ARGDIMS(N)
+      INTEGER FUNCTION ARGDIMS(N)  ! return length of argument N
       use readlx_internals
       implicit none
       INTEGER, intent(IN) :: N
@@ -180,29 +185,26 @@ end module
 ! IN      N     NUMERO D'ORDRE DE L'ARGUMENT DANS LA LISTE
 !
 !IMPLICITES
-
 !       COMMON /PARMADR/NPRM,NARG,DOPE(41),PARM(101)
 !       COMMON /PARMADR/NDOPES,DOPEA(42),DOPES(101),ADR(41)
 !       INTEGER NARG,NPRM,DOPE,NDOPE,DOPEA,DOPES,PARM
 !       Integer*8 ADR
 !*
-
       IF((N .LE. NARG))THEN
          ARGDIMS = DOPE(N)
       ELSE 
-         ARGDIMS = 0
+         ARGDIMS = 0       ! N > number of arguments for this call
       ENDIF 
       RETURN
       END
-
 !
 !**FONCTION ARGDOPE - GET DOPE LIST OF ARGUMENT NARG
 !
-      INTEGER FUNCTION ARGDOPE(N,LISTE,ND)
+      INTEGER FUNCTION ARGDOPE(N,LISTE,ND)   ! return number of items in argument N
       use readlx_internals
       implicit none
-      INTEGER N,ND
-      INTEGER LISTE(ND)
+      INTEGER, intent(IN)  :: N,ND
+      INTEGER, intent(OUT) :: LISTE(ND)      ! argument array returned to caller
 !
 !
 !OBJET(ARGDOPE)
@@ -213,31 +215,29 @@ end module
 !
 !IMPLICITE
 !
-
 !       COMMON /PARMADR/NPRM,NARG,DOPE(41),PARM(101)
 !       COMMON /PARMADR/NDOPES,DOPEA(42),DOPES(101),ADR(41)
 !       INTEGER NARG,NPRM,DOPE,NDOPE,DOPEA,DOPES,PARM
 !       Integer*8 ADR
 !
 !*
-
       INTEGER I,BASE
+
       IF( (N.GT. NARG))THEN
-         ARGDOPE = 0
+         ARGDOPE = 0       ! N > number of arguments for this call
       ELSE 
-         BASE = DOPEA(N)
-         ARGDOPE = DOPEA(N+1) - DOPEA(N)
-         DO 23002 I = 1,MIN(DOPEA(N+1)-DOPEA(N),ND)
+         BASE = DOPEA(N)                             ! first index
+         ARGDOPE = DOPEA(N+1) - DOPEA(N)             ! length
+         DO 23002 I = 1,MIN(DOPEA(N+1)-DOPEA(N),ND)  ! get values for this argument (max of ND values)
             LISTE(I) = DOPES(BASE+I-1)
 23002    CONTINUE 
       ENDIF 
       RETURN
       END
-
 !
 !**S/P LEXINS  -  INTERFACE DE QLXINS
 !
-      SUBROUTINE LEXINS(IVAR,ICLE,NB,LIMIT,TYP)
+      SUBROUTINE LEXINS(IVAR,ICLE,NB,LIMIT,TYP)  ! legacy support of an old routine
       implicit none
       INTEGER IVAR,ICLE,NB,LIMIT,TYP
 !
@@ -247,24 +247,22 @@ end module
 !     INTERFACE ENTRE L'ANCIENNE ROUTINE LEXINS ET LA NOUVELLE
 !     QLXINS
 !*
-
       CHARACTER * 8 KLE
 !
-
       WRITE(KLE,'(A8)') ICLE
       CALL QLXINS(IVAR,KLE,NB,LIMIT,TYP)
       RETURN
       END
-
 !
-!**S/P QLXADI GET VALUE OF INDEXED ARRAY COMPONENT
-      SUBROUTINE QLXADI(KLE,IND,VALEUR,TYPE,ERR)
+!**S/P QLXADI GET VALUE OF INDEXED ARRAY COMPONENT  (ONLY USED BY QLXVAL)
+      SUBROUTINE QLXADI(KLE,IND,VALEUR,dummy,ERR)  ! in case of error, VALEUR is undefined
       implicit none
-      INTEGER IND,VALEUR,TYPE
-      LOGICAL ERR
-      CHARACTER(len=*) :: KLE
+      INTEGER, intent(IN)  :: IND           ! index (origin 1)
+      INTEGER, intent(OUT) :: VALEUR        ! value returned to user
+      INTEGER, intent(IN)  :: dummy         ! not used
+      LOGICAL, intent(OUT) :: ERR           ! error flag
+      CHARACTER(len=*), intent(IN) :: KLE   ! key (name of array or value)
 !*
-
       INTEGER, EXTERNAL :: QLXDTYP
       Integer(kind=8) ::  LOCVAR,LOCCNT
       INTEGER :: LIMITE,ITYP,IZ,INDX
@@ -272,45 +270,43 @@ end module
 !       EQUIVALENCE(Z,IZ)
       IZ = IND
       Z  = transfer(IND,Z)
-      IF((QLXDTYP(IZ).EQ.1))THEN
-         INDX = IZ
-      ELSE 
-         INDX = NINT(Z)
+      ERR = .false.
+      IF((QLXDTYP(IZ).EQ.1))THEN   ! is it integer ?  (almost always true if integers are 32 bit values)
+         INDX = IZ                 ! use integer value as index
+      ELSE                         ! it is real
+         INDX = NINT(Z)            ! index must be integre, take nearest integer value if float
       ENDIF 
-      CALL QLXFND(KLE,LOCVAR,LOCCNT,LIMITE,ITYP)
+      CALL QLXFND(KLE,LOCVAR,LOCCNT,LIMITE,ITYP)  ! find key in table
       IF((ITYP.NE.0 .AND. ITYP.NE.1))THEN
          ERR = .TRUE.
       ENDIF 
-      IF((INDX.GT.LIMITE .OR. INDX.LE.0))THEN
+      IF((INDX.GT.LIMITE .OR. INDX.LE.0))THEN     ! index is OUT OF BOUNDS
          ERR = .TRUE.
       ENDIF 
       IF((.NOT.ERR))THEN
-         CALL PEEK(LOCVAR,INDX,VALEUR)
+         CALL PEEK(LOCVAR,INDX,VALEUR)  ! get 32 bit value at locvar + INDX -1 elements
       ENDIF 
       RETURN
       END
-
 !
-!*S/P GET SUBSCRIPT THEN BUILD MACHINE ADDRESS
-      Integer(kind=8) FUNCTION QLXADR(KLE,ERR)
+!*S/P GET OPTIONAL SUBSCRIPT THEN BUILD MEMORY ADDRESS
+      Integer(kind=8) FUNCTION QLXADR(KLE,ERR) ! get base address of key (symbol), return 0 if error
       implicit none
-!
-      CHARACTER(len=*) :: KLE
-      LOGICAL ERR
+      CHARACTER(len=*), intent(IN) :: KLE
+      LOGICAL, intent(OUT) :: ERR
       INTEGER :: LIMITS,ITYP,IND
-      Integer(kind=8) :: LOCCNT, locvar8
+      Integer(kind=8) :: LOCCNT, locvar
       Integer(kind=8), external :: get_address_from
       integer, dimension(*) :: VARI
-      POINTER (LOCVAR,VARI)
+      POINTER (P,VARI)
 !*
-      CALL QLXIND(IND,ERR)
+      CALL QLXIND(IND,ERR)  ! get possible index value (1 will be returned if none found)
 !
       IF((.NOT. ERR))THEN
-         CALL QLXFND(KLE,LOCVAR8,LOCCNT,LIMITS,ITYP)
-         call make_cray_pointer(LOCVAR,locvar8)
+         CALL QLXFND(KLE,locvar,LOCCNT,LIMITS,ITYP)               ! find base address of key (symbol)
+         call make_cray_pointer(P,locvar)                         ! make cray pointer from LOCVAR
          IF((IND.LE.LIMITS .AND. ITYP.GE.0 .AND. ITYP.LE.1))THEN
-!            QLXADR = QLXMAD(LOCVAR,IND)
-            QLXADR = get_address_from(VARI(IND))
+            QLXADR = get_address_from(VARI(IND))      ! loc(vari(ind)) would probably be O.K.
          ELSE 
             ERR=.TRUE.
             CALL QLXERR(21017,'QLXADR')
@@ -324,12 +320,13 @@ end module
 
 !
 !**S/P QLXASG ASSIGNATION D'UNE OU PLUSIEURS VALEURS
-      SUBROUTINE QLXASG(VAL,ICOUNT,LIMIT,ERR)
+      SUBROUTINE QLXASG(VAL,ICOUNT,LIMIT,ERR)   ! process assignment statement
       use readlx_internals
       implicit none
-      integer*8 VAL
-      INTEGER ICOUNT,LIMIT
-      LOGICAL ERR
+      integer(kind=8), intent(IN) :: VAL           ! assignment target MEMORY ADDRESS
+      INTEGER, intent(OUT)        :: ICOUNT        ! number of values stored
+      INTEGER, intent(IN)         :: LIMIT         ! max number of values that may be stored
+      LOGICAL, intent(OUT)        :: ERR           ! error flag
 !
 !OBJET(QLXASG)
 !        PREND LES TOKENS QUI SUIVENT LE SIGNE  =  ET SEPARES PAR DES VIRGULES
@@ -337,7 +334,7 @@ end module
 !ARGUMENTS
 ! E      VAL     ADRESSE DE LA CLE CIBLE
 ! E      ICOUNT  NOMBRE DE MOTS DEPOSES
-! E      LIMIT   NOMBRE MAXIMAL DE MOTS DISPONIBLES
+! E      LIMIT   NOMBRE MAXIMAL DE MOTS QUE VAL PEUT ACCUEILLIR
 ! S      ERR     INDICATEUR D'ERREUR
 !
 !IMPLICITES
@@ -358,7 +355,6 @@ end module
 !       COMMON /QLXFMT/ LINEFMT
 !       COMMON /QLXFMT2/ KARMOT
 !*
-
       INTEGER IND,JLEN,QLXVAL
       INTEGER OLDTYP,ITEMP(80),IREPCN
       REAL TEMP(80)
@@ -366,7 +362,6 @@ end module
       LOGICAL IAREP,FIN
       integer :: i, j
 !
-
       IND=1
       OLDTYP=4
       FIN=.FALSE.
@@ -374,7 +369,6 @@ end module
       IREPCN=1
       JLEN=0
       CALL QLXIND(IND,ERR)
-!
 
       IF((.NOT.ERR))THEN
          CALL QLXTOK
@@ -388,26 +382,25 @@ end module
                   GOTO 23005
                ENDIF 
             ENDIF 
-            IF((TYPE.EQ.8))THEN    ! expression result ? (from qlxxpr)
-               call get_content_of_location(JVAL,1,JVAL)
+            IF((TYPE.EQ.8))THEN    ! expression result (from qlxxpr)
+               call get_content_of_location(JVAL,1,JVAL)    ! this is BROKEN, it will not work if JVAL is 32 bit value
             ELSE 
-               IF((TYPE.EQ.1 .AND. OLDTYP.EQ.4))THEN  ! integer
+               IF((TYPE.EQ.1 .AND. OLDTYP.EQ.4))THEN  ! integer following operator
                   ITEMP(1)=JVAL
                   JLEN=1
 !
                ELSE 
-                  IF((TYPE.EQ.2 .AND. OLDTYP.EQ.4))THEN ! float
+                  IF((TYPE.EQ.2 .AND. OLDTYP.EQ.4))THEN ! float following operator
                      TEMP(1)=ZVAL
                      JLEN=1
 !
                   ELSE 
-                     IF((TYPE.EQ.3 .AND. OLDTYP.EQ.4))THEN 
+                     IF((TYPE.EQ.3 .AND. OLDTYP.EQ.4))THEN   ! long alphanumeric token following operator
                         JLEN=(LEN+KARMOT-1)/KARMOT
-                        READ(TOKEN,LINEFMT)(ITEMP(J),J=1,JLEN)
-! 101                     FORMAT(20A4)
+                        READ(TOKEN,LINEFMT)(ITEMP(J),J=1,JLEN)  ! get a bunch of KARMOT characters into an integer array
 !
                      ELSE 
-                        IF((TYPE.EQ.4))THEN
+                        IF((TYPE.EQ.4))THEN                     ! operator
                            IF((TOKEN(1:2).EQ.'% '))THEN
                               IF((OLDTYP.EQ.1 .AND.(.NOT.IAREP)))THEN
                                  IREPCN=ITEMP(1)
@@ -474,7 +467,7 @@ end module
       END
 !
 !**S/P QLXBAK     RENVOYER UN CARACTERE
-      SUBROUTINE QLXBAK(ICAR)
+      SUBROUTINE QLXBAK(ICAR)  ! push character back into input buffer
       use readlx_internals
       implicit none
       CHARACTER(len=1), intent(IN) :: ICAR
@@ -498,23 +491,23 @@ end module
 !       COMMON /QLXBUF2/ INLINE
 !       CHARACTER(len=101) :: INLINE
 !*
-
       IF((NC.GT.1))THEN
          INLINE(NC-1:NC-1)=ICAR
          NC=NC-1
       ELSE 
-         CALL QLXERR(81007,'QLXBAK')
+         CALL QLXERR(81007,'QLXBAK')  ! OUCH !! no room to push character back
 !
-
       ENDIF 
       RETURN
       END
 !
-      SUBROUTINE QLXCALL(SUB,ICOUNT,LIMITS,ERR)
+      SUBROUTINE QLXCALL(SUB,ICOUNT,LIMITS,ERR)   ! process a call directive NAME(parm,parm,....,parm)
       use readlx_internals
       implicit none
-      Integer(kind=8) :: SUB,ICOUNT
-      integer, intent(IN) :: limits
+      Integer(kind=8) :: SUB        ! address of subroutine to call
+      Integer(kind=8) :: ICOUNT     ! number of arguments
+      integer, intent(IN) :: limits ! min and max acceptable number of arguments (maxargs + 100 * minargs)
+      logical, intent(OUT) :: ERR
 !
       Integer(kind=8), external :: get_address_from
 
@@ -547,13 +540,11 @@ end module
       CHARACTER(len=8) :: KLE
       integer :: i, j, JUNK, NPRM0
 !
-      LOGICAL ERR,FIN,INLIST
+      LOGICAL FIN,INLIST
 !
-
 !       DATA ADR  /41*0/
 !       DATA PARM /101*0/
 !
-
       FIN  = .FALSE.
       INLIST = .FALSE.
       LOCDUM =get_address_from(PARM(1))
@@ -690,7 +681,6 @@ end module
       ENDIF 
       RETURN
       END
-
 !
 !**FONCTION QLXCHR     RETOURNE UN CARACTERE A LA FOIS D'UNE LIGNE
       CHARACTER(len=1) FUNCTION QLXCHR()  ! get next character from current input stream
@@ -800,15 +790,15 @@ end module
       RETURN
       END
 !
-!**FUNCTION QLXDTYP  TYPE OF A DATA ITEM
-      FUNCTION QLXDTYP(ITEM)
+!**FUNCTION QLXDTYP  TYPE OF A NUMERICAL DATA ITEM  (TO BE REVISITED BECAUSE NEXT TO POINTLESS)
+      FUNCTION QLXDTYP(ITEM)   ! ONLY USED BY QLXADI
       implicit none
       INTEGER QLXDTYP
       INTEGER ITEM
       IF((ABS(ITEM).LE.2147483647))THEN
-         QLXDTYP =1
+         QLXDTYP =1                      ! assumed INTEGER if abs value < 2**31 (almost always the case if integer is 32 bits)
       ELSE 
-         QLXDTYP =2
+         QLXDTYP =2                      ! REAL
       ENDIF 
       RETURN
       END
@@ -880,28 +870,23 @@ end module
       DATA typ( 8) /'FATAL  '/
       DATA typ( 9) /'SYSTEME'/
 !
-
       MT = CODE / 10000
       NERR = NERR + 1
       ME = MOD(CODE,1000)
       DESTI = MOD(CODE/1000,10)
 !
-
       WRITE(ERMSG,600) ME,MODUL,typ(MT),MSG(ME)
 600   FORMAT(' RLX',I3.3,'-',A7,'-',A7,'-',A40)
 !
-
       WRITE(6,*) ERMSG
       WRITE(6,'(1X,A)') INLINE(21:LAST)
       WRITE(6,'(1X,101A1)') (' ',I=1,NC-22),'^'
 !
-
       RETURN
       END
-
 !
 !**S/P QLXFLSH     RETIENT  UN SEUL CARACTERE D'UNE LIGNE.
-      SUBROUTINE QLXFLSH(ICAR)
+      SUBROUTINE QLXFLSH(ICAR)  ! flush input characters until ICAR found
       implicit none
       CHARACTER(len=1) :: ICAR
 !
@@ -915,32 +900,30 @@ end module
 !        ICAR     ENTIER SERVANT D'ARGUMENT D'ENTREE . IL DESIGNE
 !                 LE CARACTERE A ETRE RETENU DANS LA LIGNE DE TEXTE.
 !*
-      CHARACTER(len=1), external :: QLXCHR
+      CHARACTER(len=1), external :: QLXCHR  ! get netx input char
 !
-
-23000 IF((QLXCHR().NE.ICAR))THEN
-
-!
+23000 IF((QLXCHR().NE.ICAR))THEN  ! loop until next char is ICAR
          GOTO 23000
       ENDIF 
       RETURN
       END
-
 !
-      SUBROUTINE QLXFND(KEY,LOCVAR,LOCCNT,LIMITS,ITYP)
+      SUBROUTINE QLXFND(KEY,LOCVAR,LOCCNT,LIMITS,ITYP) ! symbol table lookup
       use readlx_internals
       implicit none
-      Integer(kind=8) :: LOCVAR,LOCCNT,get_address_from
-      EXTERNAL get_address_from
-      INTEGER LIMITS,ITYP
-      CHARACTER(len=*), intent(IN) :: KEY
+      CHARACTER(len=*), intent(IN) :: KEY   ! symbol to look for
+      Integer(kind=8) :: LOCVAR             ! address associated to symbol (0 if not applicable)
+      Integer(kind=8) :: LOCCNT             ! count associated with symbol
+      INTEGER, intent(OUT) :: LIMITS        ! limits associated with symbol
+      INTEGER, intent(OUT) :: ITYP          ! symbol type
 !
 !        RETROUVE, A PARTIR DE LA CLE IKEY, L'ADRESSE DE IVAR,ICOUNT.
 !
-
+      Integer(kind=8), EXTERNAL :: get_address_from
       INTEGER QLXNVAR, QLXUNDF, QLXPRNT
       EXTERNAL QLXNVAR, QLXUNDF, QLXPRNT, LOW2UP
-      CHARACTER(len=8), save :: IKEY, CLEF(12)
+      CHARACTER(len=8), save :: IKEY
+      CHARACTER(len=8), save :: CLEF(12)    ! basic keyword table
       INTEGER DUMMY,POS
       SAVE DUMMY
       integer :: i
@@ -950,11 +933,10 @@ end module
       LOCCNT=0
       LIMITS=0
       ITYP=-1
-      CALL LOW2UP(KEY,IKEY)
+      CALL LOW2UP(KEY,IKEY) ! force symbol to upper case
 !
-
       POS = 0
-      DO 23000 I = 1,12
+      DO 23000 I = 1,12              ! look first into basic keyword table
          IF( (IKEY.EQ. CLEF(I)))THEN
             POS = I
             GOTO 05
@@ -963,7 +945,7 @@ end module
 05    CONTINUE
       GOTO (10,20,30,40,50,60,70,80,90,100,110,120,130) POS+1
 10    CONTINUE
-      CALL QLXLOOK(LOCVAR,IKEY,LOCCNT,LIMITS,ITYP)
+      CALL QLXLOOK(LOCVAR,IKEY,LOCCNT,LIMITS,ITYP)  ! not found in basic keyword table
       GOTO 200
 20    CONTINUE
       ITYP = 10
@@ -994,32 +976,31 @@ end module
       GOTO 200
 110   CONTINUE
       ITYP = 2
-      LOCVAR = get_address_from(QLXPRNT)
-      LOCCNT =get_address_from(DUMMY)
+      LOCVAR = get_address_from(QLXPRNT)   ! print(QUOI,FORMAT)
+      LOCCNT = get_address_from(DUMMY)
       LIMITS = 202
       GOTO 200
 120   CONTINUE
       ITYP = 2
-      LOCVAR = get_address_from(QLXNVAR)
-      LOCCNT =get_address_from(DUMMY)
+      LOCVAR = get_address_from(QLXNVAR)   ! define(KEY,DEFINITION)
+      LOCCNT = get_address_from(DUMMY)
       LIMITS = 202
       GOTO 200
 130   CONTINUE
       ITYP = 2
-      LOCVAR = get_address_from(QLXUNDF)
+      LOCVAR = get_address_from(QLXUNDF)   ! undef(KEY)
       LOCCNT =get_address_from(DUMMY)
       LIMITS = 101
 200   CONTINUE
       RETURN
       END
-
 !
-      SUBROUTINE QLXIND(IND,ERR)
+      SUBROUTINE QLXIND(IND,ERR)  ! look for possible index, if none found, return 1
       use readlx_internals
       implicit none
 !
-      INTEGER IND
-      LOGICAL ERR
+      INTEGER, intent(OUT) :: IND  ! index value
+      LOGICAL, intent(OUT) :: ERR  ! error flag
 !       COMMON/QLXTOK1/LEN,TYPE,ZVAL,INEXPR
 !       LOGICAL INEXPR
 !       INTEGER LEN,TYPE,JVAL
@@ -1031,16 +1012,15 @@ end module
 !       CHARACTER *80 TOKEN
 !
 !*
-
       EXTERNAL QLXSKP
-      CHARACTER *1 QLXSKP
-      CHARACTER *1 IC
+      CHARACTER(len=1) :: QLXSKP
+      CHARACTER(len=1) :: IC
       IND=1
       IC=QLXSKP(' ')
 !
-      IF((IC.EQ.'['))THEN
-         CALL QLXTOK
-         IF((((TYPE.EQ.1) .OR.(TYPE.EQ.0)) .AND. JVAL.GT.0))THEN
+      IF((IC.EQ.'['))THEN        ! yes, there is indexing [number]
+         CALL QLXTOK             ! get next token
+         IF((((TYPE.EQ.1) .OR.(TYPE.EQ.0)) .AND. JVAL.GT.0))THEN   ! MUST be a positive number (KEY or integer)
             IND=JVAL
          ELSE 
             CALL QLXERR(21009,'QLXIND')
@@ -1048,19 +1028,16 @@ end module
          ENDIF 
          IF((.NOT.ERR))THEN
             CALL QLXTOK
-            IF((TOKEN(1:1).NE.']' .OR. TYPE.NE.4))THEN
+            IF((TOKEN(1:1).NE.']' .OR. TYPE.NE.4))THEN   ! MUST end with ]
                CALL QLXERR(21010,'QLXIND')
                ERR=.TRUE.
             ENDIF 
          ENDIF 
-!
       ELSE 
          CALL QLXBAK(IC)
-!
       ENDIF 
       RETURN
       END
-
 !
 !**S/P QLXINX DECLARATION DES ROUTINES
 !
@@ -1109,7 +1086,7 @@ end module
 
 !**S/P QQLXINS DECLARATION DES CLES ET DE LEUR TYPE
 !
-      SUBROUTINE QQLXINS(IVAR,KEY,ICOUNT,LIMITS,ITYP,XTERN)
+      SUBROUTINE QQLXINS(IVAR,KEY,ICOUNT,LIMITS,ITYP,XTERN)  ! install symbol in tables
       use readlx_internals
       implicit none
       Integer IVAR,ICOUNT
@@ -1143,8 +1120,7 @@ end module
 !
 !     TROUVER LA CLE
 !
-
-      CALL LOW2UP(KEY,IKEY)
+      CALL LOW2UP(KEY,IKEY)  ! force key to upper case
       IPNT=NENTRY
 23000 IF((IPNT.GT. 0 .AND. IKEY.NE.NAMES(IPNT)))THEN
          IPNT = IPNT - 1
@@ -1153,25 +1129,17 @@ end module
       IF((IPNT.EQ.0))THEN
          NENTRY=NENTRY+1
          IPNT=NENTRY
-
-!
       ENDIF 
       IF((IPNT.EQ.256))THEN
          CALL QLXERR(10011,'QLXINS')
-
-!
       ENDIF 
       IF((LIMITS.LT.0 .OR. LIMITS.GT.99999))THEN
          CALL QLXERR(20012,'QLXINS')
          RETURN
-
-!
       ENDIF 
       IF((ITYP.LT.0 .OR.ITYP.GT.13))THEN
          CALL QLXERR(20013,'QLXINS')
          RETURN
-
-!
       ENDIF 
       ICOUNT=0
       NAMES(IPNT)=IKEY
@@ -1185,12 +1153,14 @@ end module
       RETURN
       END
 !
-      SUBROUTINE QLXLOOK(IVAR,KEY,ICOUNT,LIMITS,ITYP)
+      SUBROUTINE QLXLOOK(IVAR,KEY,ICOUNT,LIMITS,ITYP)  ! lookup routine for user defined symbols
       use readlx_internals
       implicit none
-      Integer(kind=8) :: ivar,icount
-      INTEGER ITYP,LIMITS
-      CHARACTER(len=*) :: KEY
+      Integer(kind=8), intent(OUT) :: ivar    ! address
+      CHARACTER(len=*), intent(IN) :: KEY     ! symbol
+      Integer(kind=8), intent(OUT) :: icount  ! count
+      INTEGER, intent(OUT) :: LIMITS          ! limits for number of values/arguments (max + 100 * min)
+      INTEGER, intent(OUT) :: ITYP            ! symbol type
 !       INTEGER ITAB(3:3,256),NENTRY
 !       Integer*8 IPTADR(2,256)
 !       CHARACTER *8 NAMES(256)
@@ -1201,46 +1171,42 @@ end module
 !
 !     TROUVER LA CLE
 !
-
-      CALL LOW2UP(KEY,IKEY)
+      CALL LOW2UP(KEY,IKEY)   ! force key to upper case
       IPNT=NENTRY
 23012 IF((IPNT.GT. 0 .AND. IKEY.NE.NAMES(IPNT)))THEN
          IPNT = IPNT - 1
          GOTO 23012
       ENDIF 
-      IF((IPNT.EQ. 0))THEN
+      IF((IPNT .EQ. 0))THEN  ! NOT FOUND
          ITYP = -1
          IVAR = 0
          ICOUNT = 0
          LIMITS = 0
          RETURN
-
+      ENDIF 
 !
 !     DECORTIQUER LES PARAMETRES DE LA CLE
 !
-      ENDIF 
       IVAR=IPTADR(1,IPNT)
       ICOUNT=IPTADR(2,IPNT)
       LIMITS=IAND(ITAB(3,IPNT),ishft(-1,-(32-(24))))
       ITYP=ishft(ITAB(3,IPNT),-(24))
       RETURN
 !
-
-      ENTRY QLXUDF(IVAR,KEY)
+      ENTRY QLXUDF(IVAR,KEY)  ! 
 !
 !     TROUVER LA CLE
 !
-
       IKEY = KEY
       IPNT=NENTRY
 23016 IF((IPNT.GT. 0 .AND. IKEY.NE.NAMES(IPNT)))THEN
          IPNT = IPNT - 1
          GOTO 23016
       ENDIF 
-      IF((IPNT .EQ. 0))THEN
+      IF((IPNT .EQ. 0))THEN  ! NOT FOUND
          RETURN
       ENDIF 
-      DO 23020 I=IPNT, NENTRY-1
+      DO 23020 I=IPNT, NENTRY-1        ! shift tables down by one position to get rid of symbol
          IPTADR(1,I) = IPTADR(1,I+1)
          ITAB(3,I) = ITAB(3,I+1)
          IPTADR(2,I) = IPTADR(2,I+1)
@@ -1248,7 +1214,8 @@ end module
 23020 CONTINUE 
       NENTRY = NENTRY - 1
       RETURN
-      ENTRY QLXDTB
+
+      ENTRY QLXDTB      ! DUMP symbol table
       PRINT *,' NAMES, LOCVAR, TYPE/LIMITS, LOCCOUNT'
       DO 23022 I=1,NENTRY
          PRINT 101, NAMES(I),IPTADR(1,I),ITAB(3,I),IPTADR(2,I)
@@ -1258,12 +1225,12 @@ end module
       END
 
 !
-!**FONCTION QLXNUM    RECONSTITUER UN NOMBRE ENTIER, REEL OU OCTAL
+!**FONCTION QLXNUM    RECONSTITUER UN NOMBRE ENTIER, REEL OU OCTAL (ONLY USED BY QLXTOK)
       FUNCTION QLXNUM(IB,LENG)
       implicit none
       INTEGER QLXNUM
-      CHARACTER(len=*) :: IB
-      INTEGER LENG
+      CHARACTER(len=*), intent(INOUT) :: IB         ! input token (my get updated)
+      INTEGER, intent(INOUT)          :: LENG       ! length of token (will be updated and may get clipped)
 !
 !
 !AUTEUR     M.VALIN    RPN    JUIN 1983
@@ -1286,12 +1253,10 @@ end module
 !        LENG      NOMBRE DE CARACTERES DANS LE NOMBRE(ENTIER OU REEL)
 !        (S)
 !*
-
       INTEGER ILX, J
       EXTERNAL QLXCHR
       CHARACTER(len=1) :: I, CTMP, QLXCHR
 !
-
       IF((IB(1:1).EQ.'.'))THEN
          ILX=1  ! decimal point present
       ELSE 
@@ -1299,7 +1264,6 @@ end module
       ENDIF 
       I=QLXCHR()
 !
-
 23002 IF((I.GE.'0' .AND. I.LE.'9' ))THEN  ! while numeric digit
          LENG=MIN(21,LENG+1)
          IB(LENG:LENG)=I
@@ -1339,7 +1303,7 @@ end module
          ENDIF 
       ENDIF
 
-      IF((LENG.GE.21))THEN   ! very large number
+      IF((LENG.GE.21))THEN   ! abusively large number
          QLXNUM=5
       ELSE 
          IF((ILX.EQ.0))THEN   ! no decimal point
@@ -1417,7 +1381,7 @@ end module
       END
 !
 !**S/P QLXOPR APPLIQUER UN OPERATEUR NUMERIQUE OU LOGIQUE
-      SUBROUTINE QLXOPR(TOKENS,NTOKEN,TOKTYPE,OPRTR,ERR)
+      SUBROUTINE QLXOPR(TOKENS,NTOKEN,TOKTYPE,OPRTR,ERR)   ! THIS IS BROKEN ON 64 BIT MACHINES
       implicit none
       INTEGER NTOKEN,OPRTR,TOKENS(NTOKEN),TOKTYPE(NTOKEN)
       LOGICAL ERR
@@ -1739,7 +1703,7 @@ end module
 
 !
 !**S/P QLXRPN CONVERSION A NOTATION POSTFIXE
-      SUBROUTINE QLXRPN(TOK,TOKENS,MAXTKNS,NTOKEN,TOKTYPE,PILEOP,MAXOPS,NOPER,ERR)
+      SUBROUTINE QLXRPN(TOK,TOKENS,MAXTKNS,NTOKEN,TOKTYPE,PILEOP,MAXOPS,NOPER,ERR)   ! THIS IS BROKEN ON 64 BIT MACHINES
       implicit none
       CHARACTER(len=*) TOK
       INTEGER MAXTKNS,NTOKEN,MAXOPS,NOPER
@@ -1840,7 +1804,7 @@ end module
       END
 !
 !**S/P QLXTOK
-      SUBROUTINE QLXTOK  ! get next token
+      SUBROUTINE QLXTOK  ! get next token, if key or numeric item, JVAL contains value qhen subroutine returns
       use readlx_internals
       implicit none
 !
@@ -2041,38 +2005,31 @@ end module
       CALL QLXUDF(SCRAP,CKEY)
       RETURN
       END
-
 !
-      FUNCTION QLXVAL(KLE,ERR)
+      FUNCTION QLXVAL(KLE,ERR)  ! used by QLXASG and QLXCALL
       implicit none
       INTEGER QLXVAL
 !
-
       CHARACTER *(*) KLE
       LOGICAL ERR
       INTEGER IND,VAL,DUM
 !
-
-      CALL QLXIND(IND,ERR)
+      CALL QLXIND(IND,ERR)  ! get optional index [...]
 !
-
       VAL = 0
       IF((.NOT. ERR))THEN
-         CALL QLXADI(KLE,IND,VAL,DUM,ERR)
-
-!
+         CALL QLXADI(KLE,IND,VAL,DUM,ERR)  ! value of KEY or KEY[...]
       ENDIF 
       QLXVAL=VAL
 !
-
       RETURN
       END
 !
 !**S/P QLXXPR TRAITER UNE EXPRESSION ARITHMETIQUE OU LOGIQUE
-      SUBROUTINE QLXXPR(ERR)
+      SUBROUTINE QLXXPR(ERR)  ! process expression, store value into JVAL  THIS CODE IS BROKEN ON 64 BIT MACHINES
       use readlx_internals
       implicit none
-      LOGICAL ERR
+      LOGICAL, intent(OUT) :: ERR
 !       COMMON/QLXTOK1/LEN,TYPE,ZVAL,INEXPR
 !       LOGICAL INEXPR
 !       INTEGER LEN,TYPE,JVAL
@@ -2083,7 +2040,6 @@ end module
 !       COMMON/QLXTOK2/TOKEN
 !       CHARACTER *80 TOKEN
 !
-
       integer, PARAMETER :: MAXTKNS=65, MAXOPS=30
       INTEGER TOKTYPE(MAXTKNS), NTOKEN
       INTEGER, dimension(MAXTKNS) :: TOKENS
@@ -2094,7 +2050,7 @@ end module
       integer(kind=8) :: LOCVAR, LOCCNT
       EXTERNAL QLXPRI
 !
-
+  call ABORT      ! THIS ROUTINE IS BROKEN
       INEXPR = .TRUE.
       NTOKEN = 0
       PLEV = 0
@@ -2191,7 +2147,7 @@ end module
          TOKEN   = ' '
          JVAL   = TOKENS(1)
          IF((TOKTYPE(1).GT.0))THEN
-            TYPE = 8
+            TYPE = 8                            ! flag result as an expression
          ELSE 
             IF((ABS(JVAL).LE.2147483647))THEN
                TYPE =1   ! integer
