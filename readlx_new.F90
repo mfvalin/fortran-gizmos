@@ -377,7 +377,11 @@ end module
 23004    IF((.NOT.ERR .AND. .NOT.FIN))THEN                          ! while not done or error
             CALL QLXTOK
             IF( ((TYPE.EQ.4) .AND. (TOKEN(1:1).EQ.'(')))THEN        ! starts with (, analyze expression
+#if defined(WITH_EXPRESSIONS)
                CALL QLXXPR(ERR)
+#else
+               ERR = .true.
+#endif
                IF((ERR))THEN
                   GOTO 23005
                ENDIF 
@@ -1379,7 +1383,7 @@ end module
       NSC = NSC + NW
       RETURN
       END
-!
+#if defined(WITH_EXPRESSIONS)
 !**S/P QLXOPR APPLIQUER UN OPERATEUR NUMERIQUE OU LOGIQUE
       SUBROUTINE QLXOPR(TOKENS,NTOKEN,TOKTYPE,OPRTR,ERR)   ! THIS IS BROKEN ON 64 BIT MACHINES
       implicit none
@@ -1614,10 +1618,10 @@ end module
       TOKTYPE(NTOKEN) = 0
       RETURN
       END
-!
+#endif
 !**S/P QLXOPT  -  PASSAGE D'OPTIONS A READLX
 !
-      SUBROUTINE QLXOPT(OPTION,VAL)
+      SUBROUTINE QLXOPT(OPTION,VAL)  ! only one option recognized : CARMOT , number of chars in a "word" (integer)
       use readlx_internals
       implicit none
       CHARACTER(len=*) OPTION
@@ -1638,7 +1642,7 @@ end module
       ENDIF 
       RETURN
       END
-!
+#if defined(WITH_EXPRESSIONS)
 !**FONCTION  QLXPRI EVALUER LA PRIORITE D'UN OPERATEUR
       FUNCTION QLXPRI(OPR)
       implicit none
@@ -1677,7 +1681,7 @@ end module
       LEFTPRI = .TRUE.
       GOTO 1
       END
-!
+#endif
       SUBROUTINE QLXPRNT(QUOI,COMMENT)
       use readlx_internals
       implicit none
@@ -1701,7 +1705,7 @@ end module
       RETURN
       END
 
-!
+#if defined(WITH_EXPRESSIONS)
 !**S/P QLXRPN CONVERSION A NOTATION POSTFIXE
       SUBROUTINE QLXRPN(TOK,TOKENS,MAXTKNS,NTOKEN,TOKTYPE,PILEOP,MAXOPS,NOPER,ERR)   ! THIS IS BROKEN ON 64 BIT MACHINES
       implicit none
@@ -1771,7 +1775,7 @@ end module
       ENDIF 
       RETURN
       END
-!
+#endif
 !**FONCTION QLXSKP     RETOURNE UN CARACTERE AUTRE QUE ICAR
       FUNCTION QLXSKP(ICAR)
       implicit none
@@ -2024,7 +2028,7 @@ end module
 !
       RETURN
       END
-!
+#if defined(WITH_EXPRESSIONS)
 !**S/P QLXXPR TRAITER UNE EXPRESSION ARITHMETIQUE OU LOGIQUE
       SUBROUTINE QLXXPR(ERR)  ! process expression, store value into JVAL  THIS CODE IS BROKEN ON 64 BIT MACHINES
       use readlx_internals
@@ -2161,7 +2165,7 @@ end module
       ENDIF 
       RETURN
       END
-!
+#endif
       SUBROUTINE READLX(UNIT,KEND,KERR)
       use readlx_internals
       implicit none
@@ -2272,7 +2276,11 @@ end module
                      IF((SKIPF(NSTRUC).EQ.0))THEN
                         CALL QLXTOK
                         IF((TOKEN(1:1).NE.'$'))THEN
+#if defined(WITH_EXPRESSIONS)
                            CALL QLXXPR(ERR)
+#else
+                           ERR = .true.
+#endif
                            IF((ERR))THEN
                               GOTO 23003
                            ENDIF 
@@ -2316,12 +2324,16 @@ end module
                               IF((SKIPF(NSTRUC).EQ.0))THEN
                                  CALL QLXTOK
                                  IF((TOKEN(1:1).NE.'$'))THEN
+#if defined(WITH_EXPRESSIONS)
                                     CALL QLXXPR(ERR)
+#else
+                                    ERR = .true.
+#endif
                                     IF((ERR))THEN
                                        GOTO 23003
                                     ENDIF 
                                     IF((TYPE.EQ.8))THEN
-                             call get_content_of_location(JVAL,1,JVAL)
+                                      call get_content_of_location(JVAL,1,JVAL)
                                     ENDIF 
                                     IF((IAND(JVAL,ishft(-1,32-(16))).EQ.0))THEN
                                        SKIPF(NSTRUC) = 1
