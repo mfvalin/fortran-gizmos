@@ -1196,8 +1196,15 @@ end module
       LIMITS=IAND(ITAB(3,IPNT),ishft(-1,-(32-(24))))
       ITYP=ishft(ITAB(3,IPNT),-(24))
       RETURN
+      END
 !
-      ENTRY QLXUDF(IVAR,KEY)  ! 
+      subroutine QLXUDF(IVAR,KEY)  ! undefine a key (symbol)
+      use readlx_internals
+      implicit none
+      Integer(kind=8), intent(OUT) :: ivar    ! address
+      CHARACTER(len=*), intent(IN) :: KEY     ! symbol
+      integer :: I, IPNT
+      character(len=8) :: ikey
 !
 !     TROUVER LA CLE
 !
@@ -1218,8 +1225,12 @@ end module
 23020 CONTINUE 
       NENTRY = NENTRY - 1
       RETURN
-
-      ENTRY QLXDTB      ! DUMP symbol table
+      END
+!
+      subroutine QLXDTB      ! DUMP symbol table
+      use readlx_internals
+      implicit none
+	integer :: I
       PRINT *,' NAMES, LOCVAR, TYPE/LIMITS, LOCCOUNT'
       DO 23022 I=1,NENTRY
          PRINT 101, NAMES(I),IPTADR(1,I),ITAB(3,I),IPTADR(2,I)
