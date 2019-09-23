@@ -1171,7 +1171,7 @@ end module
 !       COMMON /qqq_nrdlx/ NAMES, ITAB, NENTRY
 !       COMMON /qqq_nrdlx2/ IPTADR
       character(len=8) :: ikey
-      integer :: i, IPNT
+      integer :: IPNT
 !
 !     TROUVER LA CLE
 !
@@ -1230,7 +1230,7 @@ end module
       subroutine QLXDTB      ! DUMP symbol table
       use readlx_internals
       implicit none
-	integer :: I
+      integer :: I
       PRINT *,' NAMES, LOCVAR, TYPE/LIMITS, LOCCOUNT'
       DO 23022 I=1,NENTRY
          PRINT 101, NAMES(I),IPTADR(1,I),ITAB(3,I),IPTADR(2,I)
