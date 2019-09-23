@@ -1201,7 +1201,7 @@ end module
       subroutine QLXUDF(IVAR,KEY)  ! undefine a key (symbol)
       use readlx_internals
       implicit none
-      Integer(kind=8), intent(OUT) :: ivar    ! address
+      Integer(kind=8), intent(IN) :: ivar    ! address
       CHARACTER(len=*), intent(IN) :: KEY     ! symbol
       integer :: I, IPNT
       character(len=8) :: ikey
