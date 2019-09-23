@@ -1644,43 +1644,56 @@ end module
       END
 #if defined(WITH_EXPRESSIONS)
 !**FONCTION  QLXPRI EVALUER LA PRIORITE D'UN OPERATEUR
-      FUNCTION QLXPRI(OPR)
+      INTEGER FUNCTION QLXPRI_RL(OPR, LEFTPRI)  ! return operator right or left priority and index in list ( index + 100 * priority)
       implicit none
-      INTEGER QLXPRI
-      CHARACTER(len=*) OPR
-      INTEGER QLXPRIL, I
+      CHARACTER(len=*), intent(IN) :: OPR
+      LOGICAL, intent(IN) ::  LEFTPRI   ! if true return left priority, if false return right priority
+
+      INTEGER :: I
+      CHARACTER(len=4) :: OPRTR
       integer, PARAMETER :: MAXOPER=23
-      INTEGER PRI(MAXOPER)
-      CHARACTER(len=4) LISTE(MAXOPER), OPRTR
-      LOGICAL LEFTPRI
-      SAVE LISTE, PRI
-      DATA LISTE/   ')' ,   ']' ,   'U+' ,   'U-','**' ,   '*' ,        &
-         '/' ,   '+','-' ,   '<' ,   '>' ,   '==','<=' ,   '>=' ,       &
-         '<>' ,   '><','NOT',   'AND',   'OR' ,   'XOR',':=' ,   '('    &
-      ,   '[' /
-      DATA PRI  /  150 ,   150 ,   101  ,   101,91 ,   81 ,   81  ,     &
-         71,71 ,   61 ,   61  ,   61,61 ,   61 ,   61  ,   61,51 ,      &
-         41 ,   41  ,   41,10 ,   1 ,   1   /
+      CHARACTER(len=4), save, dimension(MAXOPER) ::  LISTE
+      INTEGER, save, dimension (MAXOPER):: PRI
+      ! operator list, order MUST be same as PRI table
+      DATA LISTE/   ')   ' ,   ']   ' ,   'U+  ' ,   'U-  ' ,   '**  ' ,   '*   ' ,        &
+                    '/   ' ,   '+   ' ,   '-   ' ,   '<   ' ,   '>   ' ,   '==  ' ,        &
+                    '<=  ' ,   '>=  ' ,   '<>  ' ,   '><  ' ,   'NOT ' ,   'AND ' ,        &
+                    'OR  ' ,   'XOR ' ,   ':=  ' ,   '(   ' ,   '[   ' /
+      ! operator priority table : right priority = pri, left priority = pri -mod(pri,2)
+      DATA PRI  /   150    ,   150    ,   101    ,   101    ,   91     ,   81     ,        &
+                    81     ,   71     ,   71     ,   61     ,   61     ,   61     ,        &
+                    61     ,   61     ,   61     ,   61     ,   51     ,   41     ,        &
+                    41     ,   4      ,   10     ,   1      ,   1      /
       OPRTR = OPR
-      LEFTPRI = .FALSE.
-1     CONTINUE
       DO 23000 I = 1,MAXOPER
-         IF((OPRTR.EQ.LISTE(I)))THEN
+         IF((OPRTR.EQ.LISTE(I)))THEN   ! operator found at position I
             IF((LEFTPRI))THEN
-               QLXPRI = I + PRI(I)*100
+               QLXPRI_RL = I + PRI(I)*100
             ELSE 
-               QLXPRI = I + (PRI(I)-MOD(PRI(I),2))*100
+               QLXPRI_RL = I + (PRI(I)-MOD(PRI(I),2))*100
             ENDIF 
             RETURN
          ENDIF 
 23000 CONTINUE 
-      QLXPRI = 0
+      QLXPRI_RL = 0 ! OOPS NOT FOUND
       RETURN
-      ENTRY QLXPRIL(OPR)
-      OPRTR = OPR
-      LEFTPRI = .TRUE.
-      GOTO 1
       END
+
+      INTEGER FUNCTION QLXPRI(OPR)  ! return operator right priority and index in list ( index + 100 * priority)
+      implicit none
+      CHARACTER(len=*), intent(IN) :: OPR
+      integer, external :: QLXPRI_RL
+      QLXPRI = QLXPRI_RL(OPR, .false.)  ! get right priority
+      return
+      end
+
+      INTEGER FUNCTION QLXPRIL(OPR)  ! return operator left priority and index in list ( index + 100 * priority)
+      implicit none
+      CHARACTER(len=*), intent(IN) :: OPR
+      integer, external :: QLXPRI_RL
+      QLXPRIL = QLXPRI_RL(OPR, .true.)  ! get left priority
+      return
+      end
 #endif
       SUBROUTINE QLXPRNT(QUOI,COMMENT)
       use readlx_internals
