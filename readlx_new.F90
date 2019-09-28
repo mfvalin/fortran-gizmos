@@ -1298,14 +1298,17 @@ end module
       RETURN
       END
 !
-      SUBROUTINE QLXNVAR(KEY,NW)
+      SUBROUTINE QLXNVAR(KEY,NW)  ! define a new symbol/array 
+!  TODO: extend to acccept lists for arguments 1 and 2
+!  make created items dynamic with auto allocation
       use readlx_internals
       implicit none
       INTEGER NW
 
       INTEGER KEY(*)
       INTEGER, EXTERNAL :: ARGDIMS
-      INTEGER SC(1024),NSC,J,ITYP,LIMITS
+      integer, parameter :: SCSIZE = 10240
+      INTEGER SC(SCSIZE),NSC,J,ITYP,LIMITS
       integer(kind=8) :: IVAR,ICOUNT
 
 !       CHARACTER * 20 LINEFMT
@@ -1325,7 +1328,7 @@ end module
       IF((ITYP.NE.-1))THEN
          RETURN
       ENDIF 
-      IF((NSC+NW .GT.1024+1))THEN
+      IF((NSC+NW .GT.SCSIZE+1))THEN
          CALL QLXERR(21011,'DEFINE')
          RETURN
       ENDIF 
@@ -1968,7 +1971,7 @@ end module
       RETURN
       END
 !
-      SUBROUTINE QLXUNDF(IKEY)
+      SUBROUTINE QLXUNDF(IKEY)   ! undefine a symbol
       use readlx_internals
       implicit none
       INTEGER IKEY(*)
@@ -1982,7 +1985,6 @@ end module
 !       COMMON /QLXFMT2/ KARMOT
 !
 !      WRITE(CKEY,LINFMT)(IKEY(I),I=1,ARGDIMS(1))
-
       WRITE(CKEY,101)(IKEY(I),I=1,ARGDIMS(1))
 101   FORMAT(2 A04)
       CALL QLXUDF(SCRAP,CKEY)
