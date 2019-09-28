@@ -59,6 +59,8 @@ module readlx_internals
   INTEGER, save :: LEN,TYPE,JVAL
   REAL :: ZVAL
   EQUIVALENCE (ZVAL,JVAL)
+  integer(kind=8), save :: tok_adr, tok_cnt
+  integer, save :: tok_lim, tok_nit
 ! 
 !   COMMON/QLXTOK2/TOKEN
 !   CHARACTER(len=80) :: TOKEN
@@ -515,15 +517,16 @@ end module
                IF((INLIST))THEN       ! in a list, collect item and add to list of argument values (PARM)
                   NPRM = MIN(NPRM+1,(MAX_ARGL+1))
                   PARM(NPRM) = QLXVAL(KLE,ERR) ! get value, store in list
+                  DOPE(NARG) = DOPE(NARG) + 1  ! bump argument dimension count
                ELSE                            ! not in list, solo value
                   NARG = MIN(NARG+1,41)        ! bump argument count
                   ADR(NARG) = QLXADR(KLE,ERR)  ! get addresss associated to SYMBOL
-                  DOPEA(NARG) = NDOPES + 1
-                  NPRM0 = NPRM - 1             ! start -1 in list for this argument
+                  DOPEA(NARG) = NDOPES + 1     ! bump dopes position
+                  NPRM0 = NPRM - tok_nit       ! fudge NPRM0 to get right value for DOPES(NDOPES)
+                  DOPE(NARG) = tok_nit         ! actual number of items that have been assigned to symbol
                ENDIF 
                NDOPES = MIN(NDOPES+1,(MAX_ARGL+1))      ! bump collected values list counter
                DOPES(NDOPES) = TYPE + 1 * 256 + (NPRM-NPRM0)*256 * 256   ! type, code 1, number of items
-               DOPE(NARG) = DOPE(NARG) + 1
             ELSE 
 	    IF( (TYPE.EQ.1 .OR. TYPE.EQ.2))THEN         ! numerical item
 	      NPRM = MIN(NPRM+1,(MAX_ARGL+1))
@@ -987,7 +990,7 @@ end module
       Integer ICOUNT
       CHARACTER(len=*) :: KEY
 !
-      INTEGER IDUM
+      INTEGER IDUM  ! dummy variable address used in call to QQLXINS
 !
       IF( (ITYP.NE. 2))THEN
          PRINT *,' *** QLXINX ne peut etre utilise pour ityp <> 2'
@@ -1006,7 +1009,7 @@ end module
       INTEGER ITYP,LIMITS
       CHARACTER(len=*) :: KEY
 !
-      EXTERNAL READLX
+      EXTERNAL READLX  ! dummy subroutine address used in call to QQLXINS
 !
       IF( (ITYP.EQ. 2))THEN
          PRINT *,' *** QLXINX doit etre utilise plutot que QLXINS quand ityp = 2'
@@ -1943,14 +1946,19 @@ end module
       ENDIF 
       ENDIF 
       ENDIF 
+      tok_adr = 0
+      tok_cnt = 0
+      tok_lim = 0
+      tok_nit = -1
       IF((TYPE.EQ.0))THEN               ! possible SYMBOL
-	CALL QLXFND(TOKEN(1:8),LOCVAR,LOCCNT,LIMITS,ITYP)
+	CALL QLXFND(TOKEN(1:8),tok_adr,tok_cnt,tok_lim,ITYP)
 	IF( (ITYP .EQ. -1))THEN
 	  TYPE =3                     ! not found, it is a string
 	  LENG = MIN(LENG,KARMOT)     ! enforce short string limits (KARMOT)
 	ELSE 
 	IF( ((ITYP .EQ. 0) .OR. (ITYP .EQ. 1)))THEN       ! integer or SYMBOL, get 4 byte value, store into JVAL
-	    call get_content_of_location(LOCVAR,1,JVAL)
+	    call get_content_of_location(tok_adr,1,JVAL)
+	    call get_content_of_location(tok_cnt,1,tok_nit)
 	ELSE 
 	    JVAL = -1                 ! no value for bad token
 	ENDIF 
@@ -2024,7 +2032,8 @@ end module
       LOGICAL UNARY, FINI, FIRST
       INTEGER PLEV, QLXPRI, BLEV, ITYP, LIMITES
       integer(kind=8) :: LOCVAR, LOCCNT
-      EXTERNAL QLXPRI
+      EXTERNAL QLXPRI, QLXSKP
+      character(len=1) :: nextchar, QLXSKP
 !
       INEXPR = .TRUE.         ! processing an expression (global flag)
       NTOKEN = 0              ! nothing on evaluation stack
@@ -2038,19 +2047,27 @@ end module
       PILEOP(1) ='$'          ! end of line at bottom of operator stack
 ! print *,'entering QLXXPR'
 23000 IF(( .NOT.FINI .AND. NTOKEN.LT.MAXTKNS .AND. NOPER.LT.MAXOPS .AND. .NOT.ERR))THEN ! while not finished, no overflow, no error
-         IF((.NOT.FIRST))THEN
-            CALL QLXTOK
-         ENDIF 
+	IF((.NOT.FIRST))THEN
+	  CALL QLXTOK
+	ENDIF 
 ! print *,'token = ',"'"//trim(TOKEN)//"'",type
-         FIRST = .FALSE.      ! first token already behind us
+	FIRST = .FALSE.      ! first token already behind us
 	IF((TYPE.EQ.0))THEN               ! SYMBOL
 	  NTOKEN = NTOKEN + 1
 	  CALL QLXFND(TOKEN(1:8),LOCVAR,LOCCNT,LIMITES,ITYP)
-	  IF((ITYP.NE.0 .AND. ITYP.NE.1))THEN
+	  IF((ITYP.NE.0 .AND. ITYP.NE.1))THEN  ! 
 	      ERR=.TRUE.
 	  ENDIF 
 	  TOKENS(NTOKEN) = LOCVAR         ! push address of symbol unto stack
 	  TOKTYPE(NTOKEN) = LIMITES + 1   ! it is an address, maximum index allowed is mod(LIMITES,100)
+	  nextchar = QLXSKP(' ')          ! take a peek at next non blank character
+	  call QLXBAK(nextchar)           ! and push it back
+	  if(nextchar .ne. '[') then      ! no indexing on symbol, put value instead of address on stack
+	    TOKENS(NTOKEN) = JVAL
+	    TOKTYPE(NTOKEN) = 0
+! print *,'QLXXPR using symbol value'
+	  endif
+! print *,'QLXXPR symbol',trim(TOKEN(1:8)),TOKTYPE(NTOKEN),jval,TOKENS(NTOKEN)
 	  IF((.NOT. UNARY))THEN
 	      ERR=.TRUE.
 	  ENDIF 
