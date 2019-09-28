@@ -765,16 +765,16 @@ end module
       CHARACTER(len=7), dimension(9) :: typ
       CHARACTER(len=40), dimension(50) :: MSG
 
-      DATA MSG(  1) /'REPETITION NEGATIF'/
+      DATA MSG(  1) /'FACTEUR DE REPETITION NEGATIF'/
       DATA MSG(  2) /'NB DE FOIS DEJA VU OU NON ENTIER'/
       DATA MSG(  3) /"TROP D'ELEMENTS A ASSIGNER"/
       DATA MSG(  4) /'OPERATEUR MAL PLACE'/
       DATA MSG(  5) /'TOKEN MAL PLACE'/
       DATA MSG(  6) /'IL MANQUE LE SIGNE EGAL'/
-      DATA MSG(  7) /'DEBORDEMENT DU TAMPON D ENTREE'/
+      DATA MSG(  7) /"DEBORDEMENT DU TAMPON D'ENTREE"/
       DATA MSG(  8) /'FIN DU FICHIER DEPASSEE'/
       DATA MSG(  9) /'INDICE NEGATIF, NUL OU NON ENTIER'/
-      DATA MSG( 10) /'MANQUE LE CROCHET DROIT'/
+      DATA MSG( 10) /'CROCHET DROIT MANQUANT'/
       DATA MSG( 11) /'TABLE DES SYMBOLES PLEINE'/
       DATA MSG( 12) /'LIMITE > 99999'/
       DATA MSG( 13) /'MAUVAIS CODE DE TYPE'/
@@ -786,7 +786,7 @@ end module
       DATA MSG( 19) /'OPERANDE DEMANDEE'/
       DATA MSG( 20) /', OU ) ATTENDU'/
       DATA MSG( 21) /'LA PILE D ARGUMENTS DEBORDE'/
-      DATA MSG( 22) /'TROP OU PAS ASSEZ D''ARGUMENTS'/
+      DATA MSG( 22) /"TROP OU PAS ASSEZ D'ARGUMENTS"/
 !
 
       DATA typ( 1) /'INFO   '/
@@ -937,7 +937,7 @@ end module
       implicit none
 !
       INTEGER, intent(OUT) :: IND  ! index value
-      LOGICAL, intent(OUT) :: ERR  ! error flag
+      LOGICAL, intent(OUT) :: ERR  ! error flag (set to true if an error is detected)
 !       COMMON/QLXTOK1/LEN,TYPE,ZVAL,INEXPR
 !       LOGICAL INEXPR
 !       INTEGER LEN,TYPE,JVAL
@@ -952,26 +952,26 @@ end module
       EXTERNAL QLXSKP
       CHARACTER(len=1) :: QLXSKP
       CHARACTER(len=1) :: IC
-      IND=1
-      IC=QLXSKP(' ')
+      IND=1                      ! if no index present
+      IC=QLXSKP(' ')             ! skip blanks, get following character
 !
 ! print *,'entering QLXIND'
       IF((IC.EQ.'['))THEN        ! yes, there is indexing [number]
          CALL QLXTOK             ! get next token
          IF((((TYPE.EQ.1) .OR.(TYPE.EQ.0)) .AND. JVAL.GT.0))THEN   ! MUST be a positive number (KEY or integer)
             IND=JVAL
-         ELSE 
+         ELSE                                                      ! invalid index
             CALL QLXERR(21009,'QLXIND')
             ERR=.TRUE.
          ENDIF 
          IF((.NOT.ERR))THEN
             CALL QLXTOK
-            IF((TOKEN(1:1).NE.']' .OR. TYPE.NE.4))THEN   ! MUST end with ]
+            IF((TOKEN(1:1).NE.']' .OR. TYPE.NE.4))THEN   ! MUST end with ] or else !!
                CALL QLXERR(21010,'QLXIND')
                ERR=.TRUE.
             ENDIF 
          ENDIF 
-      ELSE 
+      ELSE                     ! not a [, push character back, value of ind will be 1
          CALL QLXBAK(IC)
       ENDIF 
 ! print *,'after QLXIND, ind=', IND
@@ -1349,17 +1349,17 @@ end module
       integer :: TOK, TOK2
       POINTER (PTOK,TOK(*))
       POINTER (PTOK2,TOK2(*))
-print *,'QLXOPR, operator =',OPRTR
+! print *,'QLXOPR, operator =',OPRTR
 
       IF((ERR))THEN
          RETURN
       ENDIF 
-      IF((OPRTR.EQ.4 .OR. OPRTR.EQ.17))THEN
+      IF((OPRTR.EQ.4 .OR. OPRTR.EQ.17))THEN  ! NOT or U- (unary operators)
          MINOPER = 1
-      ELSE 
+      ELSE                                   ! two argument (binary) operators
          MINOPER = 2
       ENDIF 
-      IF((NTOKEN.LT.MINOPER))THEN
+      IF((NTOKEN.LT.MINOPER))THEN            ! not enough operands on stack
          ERR = .TRUE.
          RETURN
       ENDIF 
@@ -1368,8 +1368,8 @@ print *,'QLXOPR, operator =',OPRTR
          TOKENS(NTOKEN) = itok
          TOKTYPE(NTOKEN) = 0
       ENDIF 
-      IF((OPRTR.NE.2 .AND. OPRTR.NE.17   .AND. OPRTR.NE.21 .AND. OPRTR.NE.4))THEN
-print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
+      IF((OPRTR.NE.2 .AND. OPRTR.NE.17   .AND. OPRTR.NE.21 .AND. OPRTR.NE.4))THEN  ! NOT ']' , 'NOT', ':=' , 'U-'
+! print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
          IF((TOKTYPE(NTOKEN-1).GT.0))THEN
 !             call get_content_of_location(TOKENS(NTOKEN-1),1,itok)
 !             TOKENS(NTOKEN-1) = itok
@@ -1378,7 +1378,7 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
       ENDIF 
       REALOP = ABS(TOKENS(NTOKEN)).GT.2147483647
       IZ1 = TOKENS(NTOKEN)
-      IF((OPRTR.NE.2 .AND. OPRTR.NE.17 .AND. OPRTR.NE.4))THEN
+      IF((OPRTR.NE.2 .AND. OPRTR.NE.17 .AND. OPRTR.NE.4))THEN  ! NOT ']' , 'NOT', 'U-'
          REALOP = REALOP .OR. ABS(TOKENS(NTOKEN-1)).GT.2147483647
          IZ2 = TOKENS(NTOKEN-1)
          IF((REALOP))THEN
@@ -1392,9 +1392,9 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
       ENDIF 
       IR1 = 0
       GOTO (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21)OPRTR
-1     ERR = .TRUE.
+1     ERR = .TRUE.              ! ')' closing parenthesis
       RETURN
-2     CONTINUE
+2     CONTINUE                  ! ']' closing square bracket
       IF((TOKENS(NTOKEN).LE.0 .OR. TOKTYPE(NTOKEN-1).LE.0 .OR.REALOP))THEN
          ERR = .TRUE.
          RETURN
@@ -1402,7 +1402,6 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
       IF((TOKENS(NTOKEN).GE.TOKTYPE(NTOKEN-1)))THEN
          ERR = .TRUE.
          RETURN
-
 !temporaire      TOKENS(NTOKEN-1)=QLXMAD(TOKENS(NTOKEN-1),TOKENS(NTOKEN))
       ENDIF 
       PTOK = get_address_from(TOKENS(NTOKEN-1))
@@ -1410,53 +1409,53 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
       TOKENS(NTOKEN-1) = TOK2(TOKENS(NTOKEN))
 ! print 1111,'processing operator ]',PTOK,TOKENS(NTOKEN),TOKENS(NTOKEN-1)
       NTOKEN = NTOKEN - 1
-      TOKTYPE(NTOKEN) = 1
+      TOKTYPE(NTOKEN) = 0  ! it is a value
 ! 1111 format(A,10Z20.16,4I10)
       RETURN
-3     RETURN
-4     CONTINUE
+3     RETURN                    ! Unary + , nothing to do
+4     CONTINUE                  ! Unary minus
       IF((REALOP))THEN
          R1 = -Z1
       ELSE 
          IR1 = -IZ1
       ENDIF 
       GOTO 1000
-5     CONTINUE
+5     CONTINUE                  ! ** exponentiation
       IF((REALOP))THEN
          R1 = Z2**Z1
       ELSE 
          IR1 = IZ2**IZ1
       ENDIF 
       GOTO 1000
-6     CONTINUE
+6     CONTINUE                  ! *  multiplication
       IF((REALOP))THEN
          R1 = Z2*Z1
       ELSE 
          IR1 = IZ2*IZ1
       ENDIF 
       GOTO 1000
-7     CONTINUE
+7     CONTINUE                  ! / division
       IF((REALOP))THEN
          R1 = Z2/Z1
       ELSE 
          IR1 = IZ2/IZ1
       ENDIF 
       GOTO 1000
-8     CONTINUE
+8     CONTINUE                  ! + addition
       IF((REALOP))THEN
          R1 = Z2+Z1
       ELSE 
          IR1 = IZ2+IZ1
       ENDIF 
       GOTO 1000
-9     CONTINUE
+9     CONTINUE                  ! - substraction
       IF((REALOP))THEN
          R1 = Z2-Z1
       ELSE 
          IR1 = IZ2-IZ1
       ENDIF 
       GOTO 1000
-10    CONTINUE
+10    CONTINUE                  ! < smaller than
       IF((REALOP))THEN
          IF((Z2.LT.Z1))THEN
             IR1 =ishft(-1,32-(32))
@@ -1467,7 +1466,7 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
          ENDIF 
       ENDIF 
       GOTO 1000
-11    CONTINUE
+11    CONTINUE                  ! > greater than
       IF((REALOP))THEN
          IF((Z2.GT.Z1))THEN
             IR1 =ishft(-1,32-(32))
@@ -1478,7 +1477,7 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
          ENDIF 
       ENDIF 
       GOTO 1000
-12    CONTINUE
+12    CONTINUE                  ! == equal to
       IF((REALOP))THEN
          IF((Z2.EQ.Z1))THEN
             IR1 =ishft(-1,32-(32))
@@ -1489,7 +1488,7 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
          ENDIF 
       ENDIF 
       GOTO 1000
-13    CONTINUE
+13    CONTINUE                  ! <= smaller than or equal
       IF((REALOP))THEN
          IF((Z2.LE.Z1))THEN
             IR1 =ishft(-1,32-(32))
@@ -1500,7 +1499,7 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
          ENDIF 
       ENDIF 
       GOTO 1000
-14    CONTINUE
+14    CONTINUE                  ! <= greater than or equal
       IF((REALOP))THEN
          IF((Z2.GE.Z1))THEN
             IR1 =ishft(-1,32-(32))
@@ -1511,7 +1510,7 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
          ENDIF 
       ENDIF 
       GOTO 1000
-15    CONTINUE
+15    CONTINUE                  ! <> not equal to
       IF((REALOP))THEN
          IF((Z2.NE.Z1))THEN
             IR1 =ishft(-1,32-(32))
@@ -1522,7 +1521,7 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
          ENDIF 
       ENDIF 
       GOTO 1000
-16    CONTINUE
+16    CONTINUE                  ! >< not equal to
       IF((REALOP))THEN
          IF((Z2.NE.Z1))THEN
             IR1 =ishft(-1,32-(32))
@@ -1533,35 +1532,35 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
          ENDIF 
       ENDIF 
       GOTO 1000
-17    CONTINUE
+17    CONTINUE                  ! NOT logical NOT
       IF((REALOP))THEN
          ERR = .TRUE.
       ELSE 
          IR1 =NOT(IZ1)
       ENDIF 
       GOTO 1000
-18    CONTINUE
+18    CONTINUE                  ! AND logical AND
       IF((REALOP))THEN
          ERR = .TRUE.
       ELSE 
          IR1 = IAND(IZ2,IZ1)
       ENDIF 
       GOTO 1000
-19    CONTINUE
+19    CONTINUE                  ! OR logical OR
       IF((REALOP))THEN
          ERR = .TRUE.
       ELSE 
          IR1 = IOR(IZ2,IZ1)
       ENDIF 
       GOTO 1000
-20    CONTINUE
+20    CONTINUE                  ! XOR logical XOR
       IF((REALOP))THEN
          ERR = .TRUE.
       ELSE 
          IR1 = IEOR(IZ2,IZ1)
       ENDIF 
       GOTO 1000
-21    CONTINUE
+21    CONTINUE                  ! := assignment operator
       IF((TOKTYPE(NTOKEN-1).LE.0))THEN
          ERR = .TRUE.
          RETURN
@@ -1690,7 +1689,7 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
       INTEGER  QLXPRI, QLXPRIL
       LOGICAL ERR
       CHARACTER(len=4) :: TOKEN
-      CHARACTER(len=4) ::  PILEOP(MAXOPS)
+      CHARACTER(len=4) :: PILEOP(MAXOPS)
 ! print *,'entering QLXRPN'
       IF((ERR))THEN
          RETURN
@@ -1787,7 +1786,7 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
       END
 !
 !**S/P QLXTOK
-      SUBROUTINE QLXTOK  ! get next token, if key or numeric item, JVAL contains value qhen subroutine returns
+      SUBROUTINE QLXTOK  ! get next token, if key or numeric item, JVAL contains numerical value when subroutine returns
       use readlx_internals
       implicit none
 !
@@ -1840,13 +1839,13 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
 
 23000 IF(.TRUE.)THEN
          IC = QLXCHR()
-         IF(.NOT.(IC.NE.' '))THEN
+         IF(IC == ' ')THEN   ! skip blanks
             GOTO 23000
          ENDIF 
       ENDIF 
       LENG=1
       TOKEN(1:1)=IC
-      IF(((IC.GE.'A'.AND.IC.LE.'Z').OR.IC.EQ.'@'.OR.IC.EQ.'_'   .OR. (IC.GE. 'a' .AND. IC.LE. 'z')))THEN
+      IF(((IC.GE.'A'.AND.IC.LE.'Z').OR.IC.EQ.'@'.OR.IC.EQ.'_'   .OR. (IC.GE. 'a' .AND. IC.LE. 'z')))THEN    ! alphanumeric token
          IC=QLXCHR()
 23005    IF(((IC.GE.'A' .AND.IC .LE.'Z').OR.   (IC.GE.'0' .AND. IC.LE.'9')   .OR. (IC.GE. 'a' .AND. IC.LE. 'z')))THEN
             LENG=MIN(81,LENG+1)
@@ -1857,79 +1856,74 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
          IF((LENG.GT.8))THEN
             TYPE=3             ! alphanumeric token , length >  8, STRING
          ELSE 
-            TYPE=0             ! alphanumeric token , length <= 8
+            TYPE=0             ! alphanumeric token , length <= 8, SYMBOL
          ENDIF 
          CALL QLXBAK(IC)
-
+      ELSE 
+      IF((IC.EQ.'''' .OR. IC.EQ.'"'))THEN     ! quoted string (with ' or ")
+	LENG=0
+23011   IF(.TRUE.)THEN
+	  LENG=MIN(80,LENG+1)
+	  TOKEN(LENG:LENG)=QLXCHR()
+	  IF(.NOT.(TOKEN(LENG:LENG).EQ. IC))THEN
+	    GOTO 23011
+	  ENDIF 
+	ENDIF 
+	TOKEN(LENG:LENG) = ' '
+	LENG = LENG -1
+	IF( (IC .EQ.'"'))THEN   ! quoted with ", max allowed length is KARMOT (usually 4)
+	    LENG = MIN(LENG,KARMOT)
+	ENDIF 
+	TYPE=3             ! STRING
+      ELSE 
+      IF(((IC.GE.'0' .AND. IC.LE.'9')   .OR.(IC.EQ.'.')))THEN !   number
+	  TYPE=QLXNUM(TOKEN,LENG)   ! 1, 2, 5, 6 from qlxnum
+	  ISGN=1
 !
       ELSE 
-         IF((IC.EQ.'''' .OR. IC.EQ.'"'))THEN
-            LENG=0
-23011       IF(.TRUE.)THEN
-               LENG=MIN(80,LENG+1)
-               TOKEN(LENG:LENG)=QLXCHR()
-               IF(.NOT.(TOKEN(LENG:LENG).EQ. IC))THEN
-                  GOTO 23011
-               ENDIF 
-            ENDIF 
-            TOKEN(LENG:LENG) = ' '
-            LENG = LENG -1
-            IF( (IC .EQ.'"'))THEN
-               LENG = MIN(LENG,KARMOT)
-            ENDIF 
-            TYPE=3             ! STRING
-!
-         ELSE 
-            IF(((IC.GE.'0' .AND. IC.LE.'9')   .OR.(IC.EQ.'.')))THEN !   number
-               TYPE=QLXNUM(TOKEN,LENG)   ! 1, 2, 5, 6 from qlxnum
-               ISGN=1
-!
-            ELSE 
-               IF(((IC.EQ.'+' .OR. IC.EQ.'-').AND.(.NOT.INEXPR) ))THEN  ! sign detected
-                  IF((IC.EQ.'+'))THEN
-                     ISGN=1
-                  ELSE 
-                     ISGN=-1
-                  ENDIF 
-                  IC=QLXCHR()
-                  IF(((IC.GE.'0' .AND. IC.LE.'9').OR. IC.EQ.'.'))THEN
-                     TOKEN(1:1)=IC
-                     TYPE=QLXNUM(TOKEN,LENG)   ! 1, 2, 5, 6 from qlxnum
-                  ELSE 
-                     CALL QLXBAK(IC)
-                     TYPE=4
-                  ENDIF 
-               ELSE 
-                  IF((IC.EQ.'*'))THEN
-                     TYPE =4
-                     IC=QLXCHR()
-                     IF((IC.EQ.'*'))THEN
-                        LENG = 2
-                        TOKEN = '**'
-                     ELSE 
-                        CALL QLXBAK(IC)
-                     ENDIF 
-                  ELSE 
-                     IF((IC.EQ.'<' .OR. IC.EQ.'>' .OR. IC.EQ.'=' .OR. IC.EQ.':'))THEN
-                        TYPE =4
-                        IC=QLXCHR()
-                        IF((IC.EQ.'<' .OR. IC.EQ.'>' .OR. IC.EQ.'='))THEN
-                           LENG = 2
-                           TOKEN(2:2) = IC
-                        ELSE 
-                           CALL QLXBAK(IC)
-                        ENDIF 
-                     ELSE 
-                        TYPE=4
-
-!
-                     ENDIF 
-                  ENDIF 
-               ENDIF 
-            ENDIF 
-         ENDIF 
+      IF(((IC.EQ.'+' .OR. IC.EQ.'-').AND.(.NOT.INEXPR) ))THEN  ! sign detected, not in expression
+	IF((IC.EQ.'+'))THEN
+	    ISGN=1
+	ELSE 
+	    ISGN=-1
+	ENDIF 
+	IC=QLXCHR()
+	IF(((IC.GE.'0' .AND. IC.LE.'9').OR. IC.EQ.'.'))THEN
+	    TOKEN(1:1)=IC
+	    TYPE=QLXNUM(TOKEN,LENG)   ! 1, 2, 5, 6 from qlxnum
+	ELSE 
+	    CALL QLXBAK(IC)
+	    TYPE=4
+	ENDIF 
+      ELSE 
+      IF((IC.EQ.'*'))THEN        ! * or ** operator
+	  TYPE =4
+	  IC=QLXCHR()
+	  IF((IC.EQ.'*'))THEN
+	    LENG = 2
+	    TOKEN = '**'
+	  ELSE 
+	    CALL QLXBAK(IC)
+	  ENDIF 
+      ELSE 
+      IF((IC.EQ.'<' .OR. IC.EQ.'>' .OR. IC.EQ.'=' .OR. IC.EQ.':'))THEN  ! < <= > >= == <>>< := operator
+	TYPE =4
+	IC=QLXCHR()
+	IF((IC.EQ.'<' .OR. IC.EQ.'>' .OR. IC.EQ.'='))THEN
+	    LENG = 2
+	    TOKEN(2:2) = IC
+	ELSE 
+	    CALL QLXBAK(IC)
+	ENDIF 
+      ELSE                    ! other single character operator
+	TYPE=4
       ENDIF 
-      IF(((LENG.GT.80) .OR. (TYPE.EQ.5)))THEN
+      ENDIF 
+      ENDIF 
+      ENDIF 
+      ENDIF 
+      ENDIF 
+      IF(((LENG.GT.80) .OR. (TYPE.EQ.5)))THEN   ! error or string too long
          TOKEN = 'SCRAP'
          TYPE=5
          CALL QLXERR(21014,'QLXTOK')
@@ -1938,33 +1932,31 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
          READ(TOKEN,'(I20)')JVAL
          JVAL=SIGN(JVAL,ISGN)
       ELSE 
-         IF((TYPE.EQ.2))THEN        ! decode float
-            READ(TOKEN,'(G20.3)')ZVAL
-            ZVAL=SIGN(ZVAL,FLOAT(ISGN))
-         ELSE 
-            IF((TYPE.EQ.6))THEN     ! decode octal
-               READ(TOKEN,'(O20)')JVAL
-               TYPE=1
-               JVAL=SIGN(JVAL,ISGN)
-            ENDIF 
-         ENDIF 
+      IF((TYPE.EQ.2))THEN           ! decode float
+	READ(TOKEN,'(G20.3)')ZVAL
+	ZVAL=SIGN(ZVAL,FLOAT(ISGN))
+      ELSE 
+      IF((TYPE.EQ.6))THEN           ! decode octal number
+	  READ(TOKEN,'(O20)')JVAL
+	  TYPE=1
+	  JVAL=SIGN(JVAL,ISGN)
       ENDIF 
-      IF((TYPE.EQ.0))THEN               ! possible keyword
-         CALL QLXFND(TOKEN(1:8),LOCVAR,LOCCNT,LIMITS,ITYP)
-         IF( (ITYP .EQ. -1))THEN
-            TYPE =3                     ! not found, it is a string
-            LENG = MIN(LENG,KARMOT)
-         ELSE 
-            IF( ((ITYP .EQ. 0) .OR. (ITYP .EQ. 1)))THEN     ! integer or key, get 4 byte value
-               call get_content_of_location(LOCVAR,1,JVAL)
-            ELSE 
-               JVAL = -1
-            ENDIF 
-         ENDIF 
+      ENDIF 
+      ENDIF 
+      IF((TYPE.EQ.0))THEN               ! possible SYMBOL
+	CALL QLXFND(TOKEN(1:8),LOCVAR,LOCCNT,LIMITS,ITYP)
+	IF( (ITYP .EQ. -1))THEN
+	  TYPE =3                     ! not found, it is a string
+	  LENG = MIN(LENG,KARMOT)     ! enforce short string limits (KARMOT)
+	ELSE 
+	IF( ((ITYP .EQ. 0) .OR. (ITYP .EQ. 1)))THEN       ! integer or SYMBOL, get 4 byte value, store into JVAL
+	    call get_content_of_location(LOCVAR,1,JVAL)
+	ELSE 
+	    JVAL = -1                 ! no value for bad token
+	ENDIF 
+	ENDIF 
       ENDIF 
       LEN=LENG
-!
-
       RETURN
       END
 !
@@ -2034,121 +2026,120 @@ print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
       integer(kind=8) :: LOCVAR, LOCCNT
       EXTERNAL QLXPRI
 !
-      INEXPR = .TRUE.
-      NTOKEN = 0
-      PLEV = 0
-      BLEV = 0
-      UNARY = .TRUE.
-      ERR = .FALSE.
-      FINI = .FALSE.
-      FIRST = .TRUE.
-      NOPER = 1
-      PILEOP(1) ='$'
-print *,'entering QLXXPR'
-23000 IF(( .NOT.FINI .AND. NTOKEN.LT.MAXTKNS .AND. NOPER.LT.MAXOPS .AND. .NOT.ERR))THEN
+      INEXPR = .TRUE.         ! processing an expression (global flag)
+      NTOKEN = 0              ! nothing on evaluation stack
+      PLEV = 0                ! parentheses level
+      BLEV = 0                ! bracket level
+      UNARY = .TRUE.          ! unary operator flag
+      ERR = .FALSE.           ! no error (yet)
+      FINI = .FALSE.          ! not end of expression
+      FIRST = .TRUE.          ! no need to get token
+      NOPER = 1               ! operator stack is at bottom
+      PILEOP(1) ='$'          ! end of line at bottom of operator stack
+! print *,'entering QLXXPR'
+23000 IF(( .NOT.FINI .AND. NTOKEN.LT.MAXTKNS .AND. NOPER.LT.MAXOPS .AND. .NOT.ERR))THEN ! while not finished, no overflow, no error
          IF((.NOT.FIRST))THEN
             CALL QLXTOK
          ENDIF 
-print *,'token = ',"'"//trim(TOKEN)//"'",type
-         FIRST = .FALSE.
-         IF((TYPE.EQ.0))THEN
-            NTOKEN = NTOKEN + 1
-            CALL QLXFND(TOKEN(1:8),LOCVAR,LOCCNT,LIMITES,ITYP)
-            IF((ITYP.NE.0 .AND. ITYP.NE.1))THEN
-               ERR=.TRUE.
-            ENDIF 
-            TOKENS(NTOKEN) = LOCVAR
-            TOKTYPE(NTOKEN) = LIMITES + 1
-            IF((.NOT. UNARY))THEN
-               ERR=.TRUE.
-            ENDIF 
-            UNARY = .FALSE.
-         ELSE 
-            IF((TYPE.EQ.1 .OR. TYPE.EQ.2))THEN
-               NTOKEN = NTOKEN + 1
-               TOKENS(NTOKEN) = JVAL
-               TOKTYPE(NTOKEN) = 0
-               IF((.NOT. UNARY))THEN
-                  ERR=.TRUE.
-               ENDIF 
-               UNARY = .FALSE.
-            ELSE 
-               IF((QLXPRI(TOKEN(1:4)).GT.0))THEN
-                  IF((TOKEN(1:2).EQ.'( '))THEN
-                     PLEV = PLEV + 1
-                  ELSE 
-                     IF((TOKEN(1:2).EQ.') '))THEN
-                        PLEV = PLEV - 1
-                     ELSE 
-                        IF((TOKEN(1:2).EQ.'[ '))THEN
-                           BLEV = BLEV + 1
-                        ELSE 
-                           IF((TOKEN(1:2).EQ.'] '))THEN
-                              BLEV = BLEV - 1
-                           ENDIF 
-                        ENDIF 
-                     ENDIF 
-                  ENDIF 
-print *,'plev =',plev
-                  IF((PLEV.LT.0 .OR. BLEV.LT.0))THEN
-                     FINI = .TRUE.
-                     CALL QLXBAK(TOKEN(1:1))
-                     GOTO 23001
-                  ENDIF 
-                  IF((UNARY))THEN
-                     IF((TOKEN(1:2).EQ.'+ '))THEN
-                        TOKEN(1:2) = 'U+'
-                     ELSE 
-                        IF((TOKEN(1:2).EQ.'- '))THEN
-                           TOKEN(1:2) = 'U-'
-                        ELSE 
-                           IF((TOKEN(1:2).NE.'( ' .AND. TOKEN(1:2).NE.'[ '))THEN
-                              ERR=.TRUE.
-                           ENDIF 
-                        ENDIF 
-                     ENDIF 
-                  ENDIF 
-                  UNARY = TOKEN(1:1).NE.')' .AND. TOKEN(1:1).NE.']'
-print *,'calling QLXRPN with ',trim(token)
-                  CALL QLXRPN(TOKEN,TOKENS,MAXTKNS,NTOKEN,TOKTYPE,PILEOP,MAXOPS,NOPER,ERR)
-print *,'called QLXRPN with ',trim(token)
-               ELSE 
-                  IF((TOKEN(1:1).EQ.',' .OR. TOKEN(1:1).EQ.'$'   .OR. TOKEN(1:2).EQ.':='))THEN
-                     CALL QLXRPN('$',TOKENS,MAXTKNS,NTOKEN,TOKTYPE,PILEOP,MAXOPS,NOPER,ERR)
-                     FINI = .TRUE.
-                     CALL QLXBAK(TOKEN(1:1))
-                  ELSE 
-                     WRITE(6,'(A8,A)')TOKEN(1:8),' IS INVALID'
-                     ERR = .TRUE.
-                  ENDIF 
-               ENDIF 
-            ENDIF 
-         ENDIF 
-         GOTO 23000
-      ENDIF 
+! print *,'token = ',"'"//trim(TOKEN)//"'",type
+         FIRST = .FALSE.      ! first token already behind us
+	IF((TYPE.EQ.0))THEN               ! SYMBOL
+	  NTOKEN = NTOKEN + 1
+	  CALL QLXFND(TOKEN(1:8),LOCVAR,LOCCNT,LIMITES,ITYP)
+	  IF((ITYP.NE.0 .AND. ITYP.NE.1))THEN
+	      ERR=.TRUE.
+	  ENDIF 
+	  TOKENS(NTOKEN) = LOCVAR         ! push address of symbol unto stack
+	  TOKTYPE(NTOKEN) = LIMITES + 1   ! it is an address, maximum index allowed is mod(LIMITES,100)
+	  IF((.NOT. UNARY))THEN
+	      ERR=.TRUE.
+	  ENDIF 
+	  UNARY = .FALSE.
+	ELSE 
+	IF((TYPE.EQ.1 .OR. TYPE.EQ.2))THEN   ! numerical value (integer or float) 
+	    NTOKEN = NTOKEN + 1
+	    TOKENS(NTOKEN) = JVAL
+	    TOKTYPE(NTOKEN) = 0
+	    IF((.NOT. UNARY))THEN
+	      ERR=.TRUE.
+	    ENDIF 
+	    UNARY = .FALSE.
+	ELSE 
+	IF((QLXPRI(TOKEN(1:4)).GT.0))THEN    ! operator with valid priority (arithmetic or logical operator)
+	  IF((TOKEN(1:2).EQ.'( '))THEN       ! start (
+	      PLEV = PLEV + 1
+	  ELSE 
+	  IF((TOKEN(1:2).EQ.') '))THEN       ! end )
+	    PLEV = PLEV - 1
+	  ELSE 
+	  IF((TOKEN(1:2).EQ.'[ '))THEN       ! start [
+	      BLEV = BLEV + 1
+	  ELSE 
+	  IF((TOKEN(1:2).EQ.'] '))THEN       ! end }
+	    BLEV = BLEV - 1
+	  ENDIF 
+	  ENDIF 
+	  ENDIF 
+	  ENDIF 
+! print *,'plev =',plev
+	  IF((PLEV.LT.0 .OR. BLEV.LT.0))THEN  ! block level < 0, BREAK
+	      FINI = .TRUE.
+	      CALL QLXBAK(TOKEN(1:1))
+	      GOTO 23001
+	  ENDIF 
+	  IF((UNARY))THEN                     ! unary operator
+	    IF((TOKEN(1:2).EQ.'+ '))THEN    ! +
+	      TOKEN(1:2) = 'U+'
+	    ELSE 
+	    IF((TOKEN(1:2).EQ.'- '))THEN    ! -
+		TOKEN(1:2) = 'U-'
+	    ELSE 
+	    IF((TOKEN(1:2).NE.'( ' .AND. TOKEN(1:2).NE.'[ '))THEN   ! only valid choice othrer than + or - is ( or [
+	      ERR=.TRUE.
+	    ENDIF 
+	    ENDIF 
+	    ENDIF 
+	  ENDIF 
+	  UNARY = TOKEN(1:1).NE.')' .AND. TOKEN(1:1).NE.']'
+! print *,'calling QLXRPN with ',trim(token)
+	  CALL QLXRPN(TOKEN,TOKENS,MAXTKNS,NTOKEN,TOKTYPE,PILEOP,MAXOPS,NOPER,ERR)
+! print *,'called QLXRPN with ',trim(token)
+	ELSE 
+	IF((TOKEN(1:1).EQ.',' .OR. TOKEN(1:1).EQ.'$' .OR. TOKEN(1:2).EQ.':='))THEN  ! comma, end of line, assignment operator : end of expression
+	    CALL QLXRPN('$',TOKENS,MAXTKNS,NTOKEN,TOKTYPE,PILEOP,MAXOPS,NOPER,ERR)
+	    FINI = .TRUE.
+	    CALL QLXBAK(TOKEN(1:1))
+	ELSE 
+	    WRITE(6,'(A8,A)')TOKEN(1:8),' IS INVALID'
+	    ERR = .TRUE.
+	ENDIF 
+	ENDIF 
+	ENDIF 
+	ENDIF 
+	GOTO 23000   ! back to while statement
+      ENDIF          ! while not finished, no overflow, no error
 23001 CONTINUE 
-print *,'done QLXXPR'
-      IF( (PLEV.GT.0 .OR. .NOT.FINI .OR. BLEV.GT.0   .OR. NTOKEN.NE.1 ))THEN
+! print *,'done QLXXPR'
+      IF( (PLEV>0 .OR. .NOT.FINI .OR. BLEV>0 .OR. NTOKEN.NE.1 ))THEN  ! mismatched parentheses, stack not empty, premature exit
          ERR = .TRUE.
       ENDIF 
-      INEXPR = .FALSE.
+      INEXPR = .FALSE.                          ! no longer processing an expression (global flag)
       IF((.NOT.ERR))THEN
-         TOKEN   = ' '
-         JVAL   = TOKENS(1)
-         IF((TOKTYPE(1).GT.0))THEN
-            TYPE = 8                            ! flag result as an expression
-         ELSE 
-            IF((ABS(JVAL).LE.2147483647))THEN
-               TYPE =1   ! integer
-            ELSE 
-               TYPE =2   ! float
-            ENDIF 
-         ENDIF 
-      ENDIF 
-      IF((ERR))THEN
+	TOKEN   = ' '
+	JVAL   = TOKENS(1)
+	IF((TOKTYPE(1).GT.0))THEN               ! flag as expression
+	  TYPE = 8    ! expression
+	ELSE 
+	IF((ABS(JVAL).LE.2147483647))THEN       ! flag as integer
+	    TYPE =1   ! integer
+	ELSE                                    ! flag as float
+	    TYPE =2   ! float
+	ENDIF 
+	ENDIF 
+      ELSE
          CALL QLXERR(81005,'QLXEXPR')
       ENDIF 
-print *,'exiting QLXXPR'
+! print *,'exiting QLXXPR'
       RETURN
       END
 #endif
@@ -2263,9 +2254,9 @@ print *,'exiting QLXXPR'
                         CALL QLXTOK
                         IF((TOKEN(1:1).NE.'$'))THEN
 #if defined(WITH_EXPRESSIONS)
-print *,'QLXXPR 0001 avant'
+! print *,'QLXXPR 0001 avant'
                            CALL QLXXPR(ERR)
-print *,'QLXXPR 0001 apres'
+! print *,'QLXXPR 0001 apres'
 #else
                            ERR = .true.
 #endif
@@ -2313,9 +2304,9 @@ print *,'QLXXPR 0001 apres'
                                  CALL QLXTOK
                                  IF((TOKEN(1:1).NE.'$'))THEN
 #if defined(WITH_EXPRESSIONS)
-print *,'QLXXPR 0002 avant'
+! print *,'QLXXPR 0002 avant'
                                     CALL QLXXPR(ERR)
-print *,'QLXXPR 0002 apres'
+! print *,'QLXXPR 0002 apres'
 #else
                                     ERR = .true.
 #endif
