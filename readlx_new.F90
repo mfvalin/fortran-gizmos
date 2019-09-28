@@ -2255,124 +2255,124 @@ end module
          CALL QLXTOK
          IF((TYPE.EQ.0))THEN
             CALL QLXFND(TOKEN,LOCVAR,LOCCNT,LIMITS,ITYP)
-            IF((ITYP.EQ.1 .AND. SKIPF(NSTRUC).EQ.0))THEN
+            IF((ITYP.EQ.1 .AND. SKIPF(NSTRUC).EQ.0))THEN               ! a SYMBOL of type 1 (assignation target)
                call get_content_of_location(LOCCNT,1,IICNT)
                CALL QLXASG(LOCVAR,IICNT,LIMITS,ERR)
                call set_content_of_location(LOCCNT,1,IICNT)
             ELSE 
-               IF((ITYP.EQ.2 .AND. SKIPF(NSTRUC).EQ.0))THEN
-                  CALL QLXCALL(LOCVAR,LOCCNT,LIMITS,ERR)
-               ELSE 
-                  IF((ITYP.EQ.3))THEN
-                     NSTRUC = NSTRUC + 1
-                     STYPE(NSTRUC) = ITYP
-                     SKIPF(NSTRUC) = NEXTIF(SKIPF(NSTRUC-1))
-                     IF((SKIPF(NSTRUC).EQ.0))THEN
-                        CALL QLXTOK
-                        IF((TOKEN(1:1).NE.'$'))THEN
+	    IF((ITYP.EQ.2 .AND. SKIPF(NSTRUC).EQ.0))THEN               ! a symbol of type 2 (subroutine call)
+	      CALL QLXCALL(LOCVAR,LOCCNT,LIMITS,ERR)
+	    ELSE 
+	    IF((ITYP.EQ.3))THEN                                        ! IF
+		NSTRUC = NSTRUC + 1
+		STYPE(NSTRUC) = ITYP
+		SKIPF(NSTRUC) = NEXTIF(SKIPF(NSTRUC-1))
+		IF((SKIPF(NSTRUC).EQ.0))THEN
+		  CALL QLXTOK
+		  IF((TOKEN(1:1).NE.'$'))THEN
 #if defined(WITH_EXPRESSIONS)
 ! print *,'QLXXPR 0001 avant'
-                           CALL QLXXPR(ERR)
+		      CALL QLXXPR(ERR)
 ! print *,'QLXXPR 0001 apres'
 #else
-                           ERR = .true.
+		      ERR = .true.
 #endif
-                           IF((ERR))THEN
-                              GOTO 23003
-                           ENDIF 
-                           IF((TYPE.EQ.8))THEN
+		      IF((ERR))THEN
+			GOTO 23003
+		      ENDIF 
+		      IF((TYPE.EQ.8))THEN
 !                               call get_content_of_location(JVAL,1,JVAL)
-                           ENDIF 
-                           IF((IAND(JVAL,ishft(-1,32-(16))).EQ.0))THEN
-                              SKIPF(NSTRUC) = 1
-                           ENDIF 
-                        ELSE 
-                           CALL QLXBAK('$')
-                        ENDIF 
-                     ENDIF 
-                     CALL QLXFLSH('$')
-                  ELSE 
-                     IF((ITYP.EQ.4))THEN
-                        IF((STYPE(NSTRUC).NE.3))THEN
-                           GOTO 23003
-                        ENDIF 
-                        STYPE(NSTRUC) = ITYP
-                        SKIPF(NSTRUC) = NXTELSE(SKIPF(NSTRUC))
-                        CALL QLXFLSH('$')
-                     ELSE 
-                        IF((ITYP.EQ.5))THEN
-                           IF((STYPE(NSTRUC).NE.3 .AND. STYPE(NSTRUC).NE.4))THEN
-                              GOTO 23003
-                           ENDIF 
-                           SKIPF(NSTRUC) = 0
-                           NSTRUC = NSTRUC - 1
-                           CALL QLXFLSH('$')
-                        ELSE 
-                           IF((ITYP.EQ.6))THEN
-                              NSTRUC = NSTRUC + 1
-                              STYPE(NSTRUC) = ITYP
-                              SKIPF(NSTRUC) = NEXTIF(SKIPF(NSTRUC-1))
-                              IF( (READREC.NE. 0))THEN
-                                 READBSE(NSTRUC) = READREC -1
-                              ELSE 
-                                 READBSE(NSTRUC) = CURREC
-                              ENDIF 
-                              IF((SKIPF(NSTRUC).EQ.0))THEN
-                                 CALL QLXTOK
-                                 IF((TOKEN(1:1).NE.'$'))THEN
+		      ENDIF 
+		      IF((IAND(JVAL,ishft(-1,32-(16))).EQ.0))THEN
+			SKIPF(NSTRUC) = 1
+		      ENDIF 
+		  ELSE 
+		      CALL QLXBAK('$')
+		  ENDIF 
+		ENDIF 
+		CALL QLXFLSH('$')
+	    ELSE 
+	    IF((ITYP.EQ.4))THEN                                        ! ELSE
+	      IF((STYPE(NSTRUC).NE.3))THEN
+		  GOTO 23003
+	      ENDIF 
+	      STYPE(NSTRUC) = ITYP
+	      SKIPF(NSTRUC) = NXTELSE(SKIPF(NSTRUC))
+	      CALL QLXFLSH('$')
+	    ELSE 
+	    IF((ITYP.EQ.5))THEN                                        ! ENDIF
+		IF((STYPE(NSTRUC).NE.3 .AND. STYPE(NSTRUC).NE.4))THEN
+		  GOTO 23003
+		ENDIF 
+		SKIPF(NSTRUC) = 0
+		NSTRUC = NSTRUC - 1
+		CALL QLXFLSH('$')
+	    ELSE 
+	    IF((ITYP.EQ.6))THEN                                        ! WHILE
+	      NSTRUC = NSTRUC + 1
+	      STYPE(NSTRUC) = ITYP
+	      SKIPF(NSTRUC) = NEXTIF(SKIPF(NSTRUC-1))
+	      IF( (READREC.NE. 0))THEN
+		  READBSE(NSTRUC) = READREC -1
+	      ELSE 
+		  READBSE(NSTRUC) = CURREC
+	      ENDIF 
+	      IF((SKIPF(NSTRUC).EQ.0))THEN
+		  CALL QLXTOK
+		  IF((TOKEN(1:1).NE.'$'))THEN
 #if defined(WITH_EXPRESSIONS)
 ! print *,'QLXXPR 0002 avant'
-                                    CALL QLXXPR(ERR)
+		    CALL QLXXPR(ERR)
 ! print *,'QLXXPR 0002 apres'
 #else
-                                    ERR = .true.
+		    ERR = .true.
 #endif
-                                    IF((ERR))THEN
-                                       GOTO 23003
-                                    ENDIF 
-                                    IF((TYPE.EQ.8))THEN
+		    IF((ERR))THEN
+			GOTO 23003
+		    ENDIF 
+		    IF((TYPE.EQ.8))THEN
 !                                       call get_content_of_location(JVAL,1,JVAL)
-                                    ENDIF 
-                                    IF((IAND(JVAL,ishft(-1,32-(16))).EQ.0))THEN
-                                       SKIPF(NSTRUC) = 1
-                                    ENDIF 
-                                 ELSE 
-                                    CALL QLXBAK('$')
-                                 ENDIF 
-                              ENDIF 
-                              CALL QLXFLSH('$')
-                           ELSE 
-                              IF((ITYP.EQ.7))THEN
-                                 IF((STYPE(NSTRUC).NE.6))THEN
-                                    GOTO 23003
-                                 ENDIF 
-                                 IF( (SKIPF(NSTRUC) .EQ. 0))THEN
-                                    READREC = READBSE(NSTRUC)
-                                 ENDIF 
-                                 SKIPF(NSTRUC) = 0
-                                 NSTRUC = NSTRUC - 1
-                                 CALL QLXFLSH('$')
-                              ELSE 
-                                 IF((ITYP.GE.10 .AND. ITYP.LE.13 .AND. SKIPF(NSTRUC).EQ.0))THEN
-                                    KERR=NERR
-                                    KEND=ITYP-10
-                                    FIN=.TRUE.
-                                 ELSE 
-                                    IF((SKIPF(NSTRUC).NE.0))THEN
-                                       CALL QLXFLSH('$')
-                                    ELSE 
-                                       CALL QLXERR(21015,'READLX')
-                                       ERR=.TRUE.
-                                    ENDIF 
-                                 ENDIF 
-                              ENDIF 
-                           ENDIF 
-                        ENDIF 
-                     ENDIF 
-                  ENDIF 
-               ENDIF 
+		    ENDIF 
+		    IF((IAND(JVAL,ishft(-1,32-(16))).EQ.0))THEN
+			SKIPF(NSTRUC) = 1
+		    ENDIF 
+		  ELSE 
+		    CALL QLXBAK('$')
+		  ENDIF 
+	      ENDIF 
+	      CALL QLXFLSH('$')
+	    ELSE 
+	    IF((ITYP.EQ.7))THEN                                        ! ENDWHILE
+		IF((STYPE(NSTRUC).NE.6))THEN
+		  GOTO 23003
+		ENDIF 
+		IF( (SKIPF(NSTRUC) .EQ. 0))THEN
+		  READREC = READBSE(NSTRUC)
+		ENDIF 
+		SKIPF(NSTRUC) = 0
+		NSTRUC = NSTRUC - 1
+		CALL QLXFLSH('$')
+	    ELSE 
+	    IF((ITYP.GE.10 .AND. ITYP.LE.13 .AND. SKIPF(NSTRUC).EQ.0))THEN   ! END (10) or ENDREAD(13)
+	      KERR=NERR
+	      KEND=ITYP-10
+	      FIN=.TRUE.
+	    ELSE 
+	    IF((SKIPF(NSTRUC).NE.0))THEN
+		CALL QLXFLSH('$')
+	    ELSE 
+		CALL QLXERR(21015,'READLX')
+		ERR=.TRUE.
+	    ENDIF 
+	    ENDIF 
+	    ENDIF 
+	    ENDIF 
+	    ENDIF 
+	    ENDIF 
+	    ENDIF 
+	    ENDIF 
             ENDIF 
-         ELSE 
+         ELSE      ! type .ne. 0
             CALL QLXERR(21016,'READLX')
             ERR=.TRUE.
          ENDIF 
