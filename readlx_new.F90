@@ -1865,8 +1865,7 @@ end module
             TYPE=0             ! alphanumeric token , length <= 8, SYMBOL
          ENDIF 
          CALL QLXBAK(IC)
-      ELSE 
-      IF((IC.EQ.'''' .OR. IC.EQ.'"'))THEN     ! quoted string (with ' or ")
+      ELSE IF((IC.EQ.'''' .OR. IC.EQ.'"'))THEN     ! quoted string (with ' or ")
 	LENG=0
 23011   IF(.TRUE.)THEN
 	  LENG=MIN(80,LENG+1)
@@ -1881,13 +1880,11 @@ end module
 	    LENG = MIN(LENG,KARMOT)
 	ENDIF 
 	TYPE=3             ! STRING
-      ELSE 
-      IF(((IC.GE.'0' .AND. IC.LE.'9')   .OR.(IC.EQ.'.')))THEN !   number
+      ELSE IF(((IC.GE.'0' .AND. IC.LE.'9')   .OR.(IC.EQ.'.')))THEN !   number
 	  TYPE=QLXNUM(TOKEN,LENG)   ! 1, 2, 5, 6 from qlxnum
 	  ISGN=1
 !
-      ELSE 
-      IF(((IC.EQ.'+' .OR. IC.EQ.'-').AND.(.NOT.INEXPR) ))THEN  ! sign detected, not in expression
+      ELSE IF(((IC.EQ.'+' .OR. IC.EQ.'-').AND.(.NOT.INEXPR) ))THEN  ! sign detected, not in expression
 	IF((IC.EQ.'+'))THEN
 	    ISGN=1
 	ELSE 
@@ -1901,8 +1898,7 @@ end module
 	    CALL QLXBAK(IC)
 	    TYPE=4
 	ENDIF 
-      ELSE 
-      IF((IC.EQ.'*'))THEN        ! * or ** operator
+      ELSE IF((IC.EQ.'*'))THEN        ! * or ** operator
 	  TYPE =4
 	  IC=QLXCHR()
 	  IF((IC.EQ.'*'))THEN
@@ -1911,8 +1907,7 @@ end module
 	  ELSE 
 	    CALL QLXBAK(IC)
 	  ENDIF 
-      ELSE 
-      IF((IC.EQ.'<' .OR. IC.EQ.'>' .OR. IC.EQ.'=' .OR. IC.EQ.':'))THEN  ! < <= > >= == <>>< := operator
+      ELSE IF((IC.EQ.'<' .OR. IC.EQ.'>' .OR. IC.EQ.'=' .OR. IC.EQ.':'))THEN  ! < <= > >= == <>>< := operator
 	TYPE =4
 	IC=QLXCHR()
 	IF((IC.EQ.'<' .OR. IC.EQ.'>' .OR. IC.EQ.'='))THEN
@@ -1924,11 +1919,6 @@ end module
       ELSE                    ! other single character operator
 	TYPE=4
       ENDIF 
-      ENDIF 
-      ENDIF 
-      ENDIF 
-      ENDIF 
-      ENDIF 
       IF(((LENG.GT.80) .OR. (TYPE.EQ.5)))THEN   ! error or string too long
          TOKEN = 'SCRAP'
          TYPE=5
@@ -1937,17 +1927,13 @@ end module
       IF((TYPE.EQ.1))THEN           ! decode integer
          READ(TOKEN,'(I20)')JVAL
          JVAL=SIGN(JVAL,ISGN)
-      ELSE 
-      IF((TYPE.EQ.2))THEN           ! decode float
+      ELSE IF((TYPE.EQ.2))THEN           ! decode float
 	READ(TOKEN,'(G20.3)')ZVAL
 	ZVAL=SIGN(ZVAL,FLOAT(ISGN))
-      ELSE 
-      IF((TYPE.EQ.6))THEN           ! decode octal number
+      ELSE IF((TYPE.EQ.6))THEN           ! decode octal number
 	  READ(TOKEN,'(O20)')JVAL
 	  TYPE=1
 	  JVAL=SIGN(JVAL,ISGN)
-      ENDIF 
-      ENDIF 
       ENDIF 
       tok_adr = 0
       tok_cnt = 0
@@ -1958,13 +1944,11 @@ end module
 	IF( (ITYP .EQ. -1))THEN
 	  TYPE =3                     ! not found, it is a string
 	  LENG = MIN(LENG,KARMOT)     ! enforce short string limits (KARMOT)
-	ELSE 
-	IF( ((ITYP .EQ. 0) .OR. (ITYP .EQ. 1)))THEN       ! integer or SYMBOL, get 4 byte value, store into JVAL
+	ELSE IF( ((ITYP .EQ. 0) .OR. (ITYP .EQ. 1)))THEN       ! integer or SYMBOL, get 4 byte value, store into JVAL
 	    call get_content_of_location(tok_adr,1,JVAL)
 	    call get_content_of_location(tok_cnt,1,tok_nit)
 	ELSE 
 	    JVAL = -1                 ! no value for bad token
-	ENDIF 
 	ENDIF 
       ENDIF 
       LEN=LENG
@@ -2074,8 +2058,7 @@ end module
 	      ERR=.TRUE.
 	  ENDIF 
 	  UNARY = .FALSE.
-	ELSE 
-	IF((TYPE.EQ.1 .OR. TYPE.EQ.2))THEN   ! numerical value (integer or float) 
+	ELSE IF((TYPE.EQ.1 .OR. TYPE.EQ.2))THEN   ! numerical value (integer or float) 
 	    NTOKEN = NTOKEN + 1
 	    TOKENS(NTOKEN) = JVAL
 	    TOKTYPE(NTOKEN) = 0
@@ -2083,22 +2066,15 @@ end module
 	      ERR=.TRUE.
 	    ENDIF 
 	    UNARY = .FALSE.
-	ELSE 
-	IF((QLXPRI(TOKEN(1:4)).GT.0))THEN    ! operator with valid priority (arithmetic or logical operator)
+	ELSE IF((QLXPRI(TOKEN(1:4)).GT.0))THEN    ! operator with valid priority (arithmetic or logical operator)
 	  IF((TOKEN(1:2).EQ.'( '))THEN       ! start (
 	      PLEV = PLEV + 1
-	  ELSE 
-	  IF((TOKEN(1:2).EQ.') '))THEN       ! end )
+	  ELSE IF((TOKEN(1:2).EQ.') '))THEN       ! end )
 	    PLEV = PLEV - 1
-	  ELSE 
-	  IF((TOKEN(1:2).EQ.'[ '))THEN       ! start [
+	  ELSE IF((TOKEN(1:2).EQ.'[ '))THEN       ! start [
 	      BLEV = BLEV + 1
-	  ELSE 
-	  IF((TOKEN(1:2).EQ.'] '))THEN       ! end }
+	  ELSE IF((TOKEN(1:2).EQ.'] '))THEN       ! end }
 	    BLEV = BLEV - 1
-	  ENDIF 
-	  ENDIF 
-	  ENDIF 
 	  ENDIF 
 ! print *,'plev =',plev
 	  IF((PLEV.LT.0 .OR. BLEV.LT.0))THEN  ! block level < 0, BREAK
@@ -2106,34 +2082,26 @@ end module
 	      CALL QLXBAK(TOKEN(1:1))
 	      GOTO 23001
 	  ENDIF 
-	  IF((UNARY))THEN                     ! unary operator
-	    IF((TOKEN(1:2).EQ.'+ '))THEN    ! +
+	  IF((UNARY))THEN                        ! unary operator
+	    IF((TOKEN(1:2).EQ.'+ '))THEN         ! +
 	      TOKEN(1:2) = 'U+'
-	    ELSE 
-	    IF((TOKEN(1:2).EQ.'- '))THEN    ! -
+	    ELSE IF((TOKEN(1:2).EQ.'- '))THEN    ! -
 		TOKEN(1:2) = 'U-'
-	    ELSE 
-	    IF((TOKEN(1:2).NE.'( ' .AND. TOKEN(1:2).NE.'[ '))THEN   ! only valid choice othrer than + or - is ( or [
+	    ELSE IF((TOKEN(1:2).NE.'( ' .AND. TOKEN(1:2).NE.'[ '))THEN   ! only valid choice othrer than + or - is ( or [
 	      ERR=.TRUE.
-	    ENDIF 
-	    ENDIF 
 	    ENDIF 
 	  ENDIF 
 	  UNARY = TOKEN(1:1).NE.')' .AND. TOKEN(1:1).NE.']'
 ! print *,'calling QLXRPN with ',trim(token)
 	  CALL QLXRPN(TOKEN,TOKENS,MAXTKNS,NTOKEN,TOKTYPE,PILEOP,MAXOPS,NOPER,ERR)
 ! print *,'called QLXRPN with ',trim(token)
-	ELSE 
-	IF((TOKEN(1:1).EQ.',' .OR. TOKEN(1:1).EQ.'$' .OR. TOKEN(1:2).EQ.':='))THEN  ! comma, end of line, assignment operator : end of expression
+	ELSE IF((TOKEN(1:1).EQ.',' .OR. TOKEN(1:1).EQ.'$' .OR. TOKEN(1:2).EQ.':='))THEN  ! comma, end of line, assignment operator : end of expression
 	    CALL QLXRPN('$',TOKENS,MAXTKNS,NTOKEN,TOKTYPE,PILEOP,MAXOPS,NOPER,ERR)
 	    FINI = .TRUE.
 	    CALL QLXBAK(TOKEN(1:1))
 	ELSE 
 	    WRITE(6,'(A8,A)')TOKEN(1:8),' IS INVALID'
 	    ERR = .TRUE.
-	ENDIF 
-	ENDIF 
-	ENDIF 
 	ENDIF 
 	GOTO 23000   ! back to while statement
       ENDIF          ! while not finished, no overflow, no error
@@ -2146,14 +2114,12 @@ end module
       IF((.NOT.ERR))THEN
 	TOKEN   = ' '
 	JVAL   = TOKENS(1)
-	IF((TOKTYPE(1).GT.0))THEN               ! flag as expression
+	IF((TOKTYPE(1).GT.0))THEN                    ! flag as expression
 	  TYPE = 8    ! expression
-	ELSE 
-	IF((ABS(JVAL).LE.2147483647))THEN       ! flag as integer
+	ELSE IF((ABS(JVAL).LE.2147483647))THEN       ! flag as integer
 	    TYPE =1   ! integer
-	ELSE                                    ! flag as float
+	ELSE                                         ! flag as float
 	    TYPE =2   ! float
-	ENDIF 
 	ENDIF 
       ELSE
          CALL QLXERR(81005,'QLXEXPR')
@@ -2257,15 +2223,13 @@ end module
          CALL QLXTOK
          IF((TYPE.EQ.0))THEN
             CALL QLXFND(TOKEN,LOCVAR,LOCCNT,LIMITS,ITYP)
-            IF((ITYP.EQ.1 .AND. SKIPF(NSTRUC).EQ.0))THEN               ! a SYMBOL of type 1 (assignation target)
+            IF((ITYP.EQ.1 .AND. SKIPF(NSTRUC).EQ.0))THEN                    ! a SYMBOL of type 1 (assignation target)
                call get_content_of_location(LOCCNT,1,IICNT)
                CALL QLXASG(LOCVAR,IICNT,LIMITS,ERR)
                call set_content_of_location(LOCCNT,1,IICNT)
-            ELSE 
-	    IF((ITYP.EQ.2 .AND. SKIPF(NSTRUC).EQ.0))THEN               ! a symbol of type 2 (subroutine call)
+            ELSE IF((ITYP.EQ.2 .AND. SKIPF(NSTRUC).EQ.0))THEN               ! a symbol of type 2 (subroutine call)
 	      CALL QLXCALL(LOCVAR,LOCCNT,LIMITS,ERR)
-	    ELSE 
-	    IF((ITYP.EQ.3))THEN                                        ! IF
+	    ELSE IF((ITYP.EQ.3))THEN                                        ! IF
 		NSTRUC = NSTRUC + 1
 		STYPE(NSTRUC) = ITYP
 		SKIPF(NSTRUC) = NEXTIF(SKIPF(NSTRUC-1))
@@ -2293,24 +2257,21 @@ end module
 		  ENDIF 
 		ENDIF 
 		CALL QLXFLSH('$')
-	    ELSE 
-	    IF((ITYP.EQ.4))THEN                                        ! ELSE
+	    ELSE IF((ITYP.EQ.4))THEN                                        ! ELSE
 	      IF((STYPE(NSTRUC).NE.3))THEN
 		  GOTO 23003
 	      ENDIF 
 	      STYPE(NSTRUC) = ITYP
 	      SKIPF(NSTRUC) = NXTELSE(SKIPF(NSTRUC))
 	      CALL QLXFLSH('$')
-	    ELSE 
-	    IF((ITYP.EQ.5))THEN                                        ! ENDIF
+	    ELSE IF((ITYP.EQ.5))THEN                                        ! ENDIF
 		IF((STYPE(NSTRUC).NE.3 .AND. STYPE(NSTRUC).NE.4))THEN
 		  GOTO 23003
 		ENDIF 
 		SKIPF(NSTRUC) = 0
 		NSTRUC = NSTRUC - 1
 		CALL QLXFLSH('$')
-	    ELSE 
-	    IF((ITYP.EQ.6))THEN                                        ! WHILE
+	    ELSE IF((ITYP.EQ.6))THEN                                        ! WHILE
 	      NSTRUC = NSTRUC + 1
 	      STYPE(NSTRUC) = ITYP
 	      SKIPF(NSTRUC) = NEXTIF(SKIPF(NSTRUC-1))
@@ -2343,8 +2304,7 @@ end module
 		  ENDIF 
 	      ENDIF 
 	      CALL QLXFLSH('$')
-	    ELSE 
-	    IF((ITYP.EQ.7))THEN                                        ! ENDWHILE
+	    ELSE IF((ITYP.EQ.7))THEN                                        ! ENDWHILE
 		IF((STYPE(NSTRUC).NE.6))THEN
 		  GOTO 23003
 		ENDIF 
@@ -2354,26 +2314,16 @@ end module
 		SKIPF(NSTRUC) = 0
 		NSTRUC = NSTRUC - 1
 		CALL QLXFLSH('$')
-	    ELSE 
-	    IF((ITYP.GE.10 .AND. ITYP.LE.13 .AND. SKIPF(NSTRUC).EQ.0))THEN   ! END (10) or ENDREAD(13)
+	    ELSE IF((ITYP.GE.10 .AND. ITYP.LE.13 .AND. SKIPF(NSTRUC).EQ.0))THEN   ! END (10) or ENDREAD(13)
 	      KERR=NERR
 	      KEND=ITYP-10
 	      FIN=.TRUE.
-	    ELSE 
-	    IF((SKIPF(NSTRUC).NE.0))THEN
+	    ELSE IF((SKIPF(NSTRUC).NE.0))THEN
 		CALL QLXFLSH('$')
 	    ELSE 
 		CALL QLXERR(21015,'READLX')
 		ERR=.TRUE.
 	    ENDIF 
-	    ENDIF 
-	    ENDIF 
-	    ENDIF 
-	    ENDIF 
-	    ENDIF 
-	    ENDIF 
-	    ENDIF 
-            ENDIF 
          ELSE      ! type .ne. 0
             CALL QLXERR(21016,'READLX')
             ERR=.TRUE.
@@ -2388,8 +2338,6 @@ end module
          WRITE(6,*)' ERREUR DANS LA STRUCTURE DES BLOCS IF THEN ELSE'
          KERR = NERR + 1
          KEND = -1
-
-!
       ENDIF 
       CLOSE(TMPFILE,STATUS='DELETE')
       RETURN
