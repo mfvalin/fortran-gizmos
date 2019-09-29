@@ -325,78 +325,74 @@ end module
 #endif
                IF((ERR)) GOTO 23005  ! exit while
             ENDIF 
+
             IF((TYPE.EQ.8))THEN    ! expression result (from qlxxpr)
 !                call get_content_of_location(JVAL,1,JVAL)    ! this is BROKEN, it will not work if JVAL is 32 bit value
-	      JLEN = JLEN + 1
-	      ITEMP(JLEN) = JVAL
-            ELSE 
-	    IF((TYPE.EQ.1 .AND. OLDTYP.EQ.4))THEN  ! integer following operator
-	      ITEMP(1)=JVAL
-	      JLEN=1
-	    ELSE 
-	    IF((TYPE.EQ.2 .AND. OLDTYP.EQ.4))THEN  ! float following operator
-	      TEMP(1)=ZVAL
-	      JLEN=1
-	    ELSE 
-	    IF((TYPE.EQ.3 .AND. OLDTYP.EQ.4))THEN  ! long alphanumeric token following operator
-	      JLEN=(LEN+KARMOT-1)/KARMOT
-	      READ(TOKEN,LINEFMT)(ITEMP(J),J=1,JLEN)  ! get a bunch of KARMOT characters into an integer array
-	    ELSE 
-	    IF((TYPE.EQ.4))THEN                    ! operator
-	      IF((TOKEN(1:2).EQ.'% '))THEN         ! repeat count ?
-		IF((OLDTYP.EQ.1 .AND.(.NOT.IAREP)))THEN
-		  IREPCN=ITEMP(1)
-		  IF((IREPCN.GT.0))THEN   ! valid repeat count
-		    IAREP=.TRUE.
-		    JLEN=0
-		  ELSE 
-		    CALL QLXERR(21001,'QLXASG')
-		    ERR=.TRUE.
-		  ENDIF 
-		ELSE 
-		  CALL QLXERR(21002,'QLXASG')
-		  ERR=.TRUE.
-		ENDIF 
-	      ELSE   ! not a repeat count
-		IF((TOKEN(1:2).EQ.', ' .OR.TOKEN(1:2).EQ.'$ '))THEN  ! comma or end of line
-		  IF(((IREPCN*MAX(JLEN,1)+IND).GT.LIMIT+1))THEN      ! overflow (too many values) ?
-		    CALL QLXERR(21003,'QLXASG')
-		    ERR=.TRUE.
-		  ELSE                                               ! no overflow, perform actual assignment, store value(s)
+		JLEN = JLEN + 1
+		ITEMP(JLEN) = JVAL
+
+            ELSE IF((TYPE.EQ.1 .AND. OLDTYP.EQ.4))THEN  ! integer following operator
+		ITEMP(1)=JVAL
+		JLEN=1
+
+	    ELSE IF((TYPE.EQ.2 .AND. OLDTYP.EQ.4))THEN  ! float following operator
+		TEMP(1)=ZVAL
+		JLEN=1
+
+	    ELSE IF((TYPE.EQ.3 .AND. OLDTYP.EQ.4))THEN  ! long alphanumeric token following operator
+		JLEN=(LEN+KARMOT-1)/KARMOT
+		READ(TOKEN,LINEFMT)(ITEMP(J),J=1,JLEN)  ! get a bunch of KARMOT characters into an integer array
+
+	    ELSE IF((TYPE.EQ.4))THEN                    ! operator
+		IF((TOKEN(1:2).EQ.'% '))THEN         ! repeat count ?
+		    IF((OLDTYP.EQ.1 .AND.(.NOT.IAREP)))THEN
+		      IREPCN=ITEMP(1)
+		      IF((IREPCN.GT.0))THEN   ! valid repeat count
+			IAREP=.TRUE.
+			JLEN=0
+		      ELSE 
+			CALL QLXERR(21001,'QLXASG')
+			ERR=.TRUE.
+		      ENDIF 
+		    ELSE 
+		      CALL QLXERR(21002,'QLXASG')
+		      ERR=.TRUE.
+		    ENDIF 
+		ELSE IF((TOKEN(1:2).EQ.', ' .OR.TOKEN(1:2).EQ.'$ '))THEN  ! comma or end of line
+		    IF(((IREPCN*MAX(JLEN,1)+IND).GT.LIMIT+1))THEN      ! overflow (too many values) ?
+		      CALL QLXERR(21003,'QLXASG')
+		      ERR=.TRUE.
+		    ELSE                                               ! no overflow, perform actual assignment, store value(s)
 ! print *,'QLXASG : store value(s)',IREPCN,JLEN
-		    DO 23030  I=1,IREPCN       ! repeat count
-		      DO 23032  J=1,JLEN       ! item length (1 for numerical values)
-			call set_content_of_location(VAL,IND+J-1,ITEMP(J))
-23032                   CONTINUE 
-		      IND=IND+MAX(JLEN,1)
-23030               CONTINUE 
-		    IREPCN=1
-		    IAREP=.FALSE.
-		    JLEN=0
-		    ICOUNT = IND-1
-		  ENDIF 
-		  FIN=TOKEN(1:1).EQ.'$'
+		      DO 23030  I=1,IREPCN       ! repeat count
+			DO 23032  J=1,JLEN       ! item length (1 for numerical values)
+			  call set_content_of_location(VAL,IND+J-1,ITEMP(J))
+    23032                   CONTINUE 
+			IND=IND+MAX(JLEN,1)
+    23030               CONTINUE 
+		      IREPCN=1
+		      IAREP=.FALSE.
+		      JLEN=0
+		      ICOUNT = IND-1
+		    ENDIF 
+		    FIN=TOKEN(1:1).EQ.'$'
 		ELSE 
 		  CALL QLXERR(21004,'QLXASG')
 		  ERR=.TRUE.
 		ENDIF 
-	      ENDIF 
+
 	    ELSE   !  last in series of else if
-	      IF((TYPE.EQ.0 .AND. OLDTYP.EQ.4))THEN
-		JLEN=1
+		IF((TYPE.EQ.0 .AND. OLDTYP.EQ.4))THEN
+		  JLEN=1
 ! print *,'QLXASG calling qlxval, token=',"'"//trim(token)//"'"
-		keysym = TOKEN(1:8)
-		ITEMP(1)=QLXVAL(keysym,ERR)
+		  keysym = TOKEN(1:8)
+		  ITEMP(1)=QLXVAL(keysym,ERR)
 ! print *,'QLXASG after qlxval, ITEMP(1)=',ITEMP(1)
-	      ELSE 
-		CALL QLXERR(21005,'QLXASG')
-		ERR=.TRUE.
-	      ENDIF 
+		ELSE 
+		  CALL QLXERR(21005,'QLXASG')
+		  ERR=.TRUE.
+		ENDIF 
 	    ENDIF   ! (TYPE.EQ.4)
-	    ENDIF   ! (TYPE.EQ.3 .AND. OLDTYP.EQ.4)
-	    ENDIF   ! (TYPE.EQ.2 .AND. OLDTYP.EQ.4)
-	    ENDIF   ! (TYPE.EQ.1 .AND. OLDTYP.EQ.4)
-            ENDIF   ! (TYPE.EQ.8)
             OLDTYP=TYPE
             GOTO 23004
          ENDIF   ! end while not done or error
@@ -509,106 +505,98 @@ end module
       ENDIF 
 
 23004 IF( (.NOT. ERR .AND. .NOT.FIN))THEN     ! while no error and not end of arguments
-         CALL QLXTOK
-         IF( (PREVI .EQ.4))THEN       ! previous token was an operator "(" , "[", "}", ","
-            IF( (TYPE .EQ.0))THEN     ! a short (<=8 char) token (SYMBOL)
-               KLE = TOKEN(1:8)
-               PREVI =7               ! not an operator
-               IF((INLIST))THEN       ! in a list, collect item and add to list of argument values (PARM)
-                  NPRM = MIN(NPRM+1,(MAX_ARGL+1))
-                  PARM(NPRM) = QLXVAL(KLE,ERR) ! get value, store in list
-                  DOPE(NARG) = DOPE(NARG) + 1  ! bump argument dimension count
-               ELSE                            ! not in list, solo value
-                  NARG = MIN(NARG+1,41)        ! bump argument count
-                  ADR(NARG) = QLXADR(KLE,ERR)  ! get addresss associated to SYMBOL
-                  DOPEA(NARG) = NDOPES + 1     ! bump dopes position
-                  NPRM0 = NPRM - tok_nit       ! fudge NPRM0 to get right value for DOPES(NDOPES)
-                  DOPE(NARG) = tok_nit         ! actual number of items that have been assigned to symbol
-               ENDIF 
-               NDOPES = MIN(NDOPES+1,(MAX_ARGL+1))      ! bump collected values list counter
-               DOPES(NDOPES) = TYPE + 1 * 256 + (NPRM-NPRM0)*256 * 256   ! type, code 1, number of items
-            ELSE 
-	    IF( (TYPE.EQ.1 .OR. TYPE.EQ.2))THEN         ! numerical item
-	      NPRM = MIN(NPRM+1,(MAX_ARGL+1))
-	      PARM(NPRM) = JVAL
-	      PREVI =7
-	      IF((.NOT. INLIST))THEN                          ! single value
-		  NARG = MIN(NARG+1,41)                       ! bump argument count
-		  ADR(NARG) = get_address_from(PARM(NPRM))    ! address (points into collected valuses list)
-		  DOPEA(NARG) = NDOPES + 1                    ! index 
-		  NPRM0 = NPRM - 1                            ! start - 1 in list
-	      ENDIF 
-	      NDOPES = MIN(NDOPES+1,(MAX_ARGL+1))
-	      DOPES(NDOPES) = TYPE + 1 * 256 + (NPRM-NPRM0)*256*256
-	      DOPE(NARG) = DOPE(NARG) + 1
-	    ELSE 
-	    IF( (TYPE .EQ.3))THEN                       ! long string
-	      JLEN = MIN((LEN+KARMOT-1) / KARMOT , (MAX_ARGL+1) - NPRM)
-	      IF((.NOT. INLIST))THEN
-		NARG = MIN(NARG+1,41)
-		ADR(NARG) = get_address_from(PARM(NPRM+1))
+	CALL QLXTOK
+
+	IF( (PREVI .EQ.4))THEN       ! previous token was an operator "(" , "[", "}", ","
+	    IF( (TYPE .EQ.0))THEN     ! a short (<=8 char) token (SYMBOL)
+		KLE = TOKEN(1:8)
+		PREVI =7               ! not an operator
+		IF((INLIST))THEN       ! in a list, collect item and add to list of argument values (PARM)
+		  NPRM = MIN(NPRM+1,(MAX_ARGL+1))
+		  PARM(NPRM) = QLXVAL(KLE,ERR) ! get value, store in list
+		  DOPE(NARG) = DOPE(NARG) + 1  ! bump argument dimension count
+		ELSE                            ! not in list, solo value
+		  NARG = MIN(NARG+1,41)        ! bump argument count
+		  ADR(NARG) = QLXADR(KLE,ERR)  ! get addresss associated to SYMBOL
+		  DOPEA(NARG) = NDOPES + 1     ! bump dopes position
+		  NPRM0 = NPRM - tok_nit       ! fudge NPRM0 to get right value for DOPES(NDOPES)
+		  DOPE(NARG) = tok_nit         ! actual number of items that have been assigned to symbol
+		ENDIF 
+		NDOPES = MIN(NDOPES+1,(MAX_ARGL+1))      ! bump collected values list counter
+		DOPES(NDOPES) = TYPE + 1 * 256 + (NPRM-NPRM0)*256 * 256   ! type, code 1, number of items
+
+	    ELSE IF( (TYPE.EQ.1 .OR. TYPE.EQ.2))THEN         ! numerical item
+		NPRM = MIN(NPRM+1,(MAX_ARGL+1))
+		PARM(NPRM) = JVAL
+		PREVI =7
+		IF((.NOT. INLIST))THEN                          ! single value
+		    NARG = MIN(NARG+1,41)                       ! bump argument count
+		    ADR(NARG) = get_address_from(PARM(NPRM))    ! address (points into collected valuses list)
+		    DOPEA(NARG) = NDOPES + 1                    ! index 
+		    NPRM0 = NPRM - 1                            ! start - 1 in list
+		ENDIF 
+		NDOPES = MIN(NDOPES+1,(MAX_ARGL+1))
+		DOPES(NDOPES) = TYPE + 1 * 256 + (NPRM-NPRM0)*256*256
+		DOPE(NARG) = DOPE(NARG) + 1
+	    ELSE IF( (TYPE .EQ.3))THEN                       ! long string
+		JLEN = MIN((LEN+KARMOT-1) / KARMOT , (MAX_ARGL+1) - NPRM)
+		IF((.NOT. INLIST))THEN
+		  NARG = MIN(NARG+1,41)
+		  ADR(NARG) = get_address_from(PARM(NPRM+1))
+		  DOPEA(NARG) = NDOPES + 1
+		  NPRM0 = NPRM
+		ENDIF 
+		READ(TOKEN,LINEFMT) (PARM(J+NPRM),J=1,JLEN)   ! stuff into PARM (jlen items)
+    ! 101                  FORMAT(25 A04)
+		NDOPES = MIN(NDOPES+1,(MAX_ARGL+1))
+		DOPES(NDOPES) = TYPE + LEN * 256 + (NPRM-NPRM0+1)*256 *256
+		NPRM = MIN(NPRM+JLEN,(MAX_ARGL+1))
+		DOPE(NARG) = DOPE(NARG) + JLEN
+		PREVI =7
+	    ELSE IF((TYPE.EQ.4 .AND. TOKEN(1:1).EQ.'[' .AND. .NOT. INLIST))THEN  ! start of a list
+		INLIST = .TRUE.
+		PREVI =4
+		NARG = MIN(NARG+1,41)                         ! bump argument count
+		ADR(NARG) = get_address_from(PARM(NPRM+1))    ! address of current insertion position in list
 		DOPEA(NARG) = NDOPES + 1
-		NPRM0 = NPRM
-	      ENDIF 
-	      READ(TOKEN,LINEFMT) (PARM(J+NPRM),J=1,JLEN)   ! stuff into PARM (jlen items)
-! 101                  FORMAT(25 A04)
-	      NDOPES = MIN(NDOPES+1,(MAX_ARGL+1))
-	      DOPES(NDOPES) = TYPE + LEN * 256 + (NPRM-NPRM0+1)*256 *256
-	      NPRM = MIN(NPRM+JLEN,(MAX_ARGL+1))
-	      DOPE(NARG) = DOPE(NARG) + JLEN
-	      PREVI =7
-	    ELSE                
-	    IF((TYPE.EQ.4 .AND. TOKEN(1:1).EQ.'[' .AND. .NOT. INLIST))THEN  ! start of a list
-	      INLIST = .TRUE.
-	      PREVI =4
-	      NARG = MIN(NARG+1,41)                         ! bump argument count
-	      ADR(NARG) = get_address_from(PARM(NPRM+1))    ! address of current insertion position in list
-	      DOPEA(NARG) = NDOPES + 1
-	      NPRM0 = NPRM                                  ! start - 1
-	    ELSE 
-	    IF((TYPE.EQ.4 .AND. TOKEN(1:1).EQ.')' .AND. NARG.EQ.0))THEN   ! ")", end of arguments
+		NPRM0 = NPRM                                  ! start - 1
+	    ELSE IF((TYPE.EQ.4 .AND. TOKEN(1:1).EQ.')' .AND. NARG.EQ.0))THEN   ! ")", end of arguments
 		FIN = .TRUE.
 	    ELSE 
 		CALL QLXERR(81019,'QLXCALL')
 		ERR = .TRUE.
 	    ENDIF 
-	    ENDIF 
-	    ENDIF 
-	    ENDIF 
-            ENDIF 
-         ELSE    ! previous token was not an operator
-            IF( (TYPE.EQ.4 .AND. (TOKEN(1:1).EQ.',' .OR. TOKEN(1:1) .EQ.')')))THEN  ! end of current(last) argument
-               FIN = TOKEN(1:1).EQ.')'    ! was last argument if ")"
-               PREVI =4
-            ELSE 
-	    IF((TYPE.EQ.4 .AND. TOKEN(1:1).EQ.']' .AND. INLIST))THEN    ! end of list
-	      INLIST = .FALSE.
-	    ELSE 
-	      CALL QLXERR(81020,'QLXCALL')
-	      ERR = .TRUE.
-	    ENDIF 
-            ENDIF 
-         ENDIF 
-         GOTO 23004   ! while (.NOT. ERR .AND. .NOT.FIN)
+
+	ELSE IF( (TYPE.EQ.4 .AND. (TOKEN(1:1).EQ.',' .OR. TOKEN(1:1) .EQ.')')))THEN  ! end of current(last) argument
+	    FIN = TOKEN(1:1).EQ.')'    ! was last argument if ")"
+	    PREVI =4
+
+	ELSE IF((TYPE.EQ.4 .AND. TOKEN(1:1).EQ.']' .AND. INLIST))THEN    ! end of list
+	    INLIST = .FALSE.
+
+	ELSE 
+	    CALL QLXERR(81020,'QLXCALL')
+	    ERR = .TRUE.
+	ENDIF 
+	GOTO 23004   ! while (.NOT. ERR .AND. .NOT.FIN)
       ENDIF 
       DOPEA(NARG+1) = NDOPES + 1
+
       IF( (.NOT. ERR))THEN     ! no errors, call can be performed
-         LIM1 = LIMITS/100
-         LIM2 = MOD(LIMITS,100)
-         IF( (NARG.GT.40 .OR. NPRM.GT.MAX_ARGL .OR. NDOPES .GT. MAX_ARGL))THEN ! too many arguments or total number of items too large
-            CALL QLXERR(81021,'QLXCALL')
-            ERR = .TRUE.
-         ELSE 
-            IF( (NARG.LT.LIM1 .OR. NARG.GT.LIM2))THEN                ! number of arguments not within specified range for this routine
-               CALL QLXERR(81022,'QLXCALL')
-               ERR = .TRUE.
-            ELSE 
-               call set_content_of_location(ICOUNT,1,NARG)   ! set number of actukal arguments to this routine
-               JUNK=RMTCALL(SUB,ADR)                         ! perform external call, ADR is list of argument addresses
-               call set_content_of_location(ICOUNT,1,0)      ! reset number of arguments to zero after call returns
-               CALL QLXFLSH('$')                             ! flush rest of input line
-            ENDIF 
-         ENDIF 
+	LIM1 = LIMITS/100
+	LIM2 = MOD(LIMITS,100)
+	IF( (NARG.GT.40 .OR. NPRM.GT.MAX_ARGL .OR. NDOPES .GT. MAX_ARGL))THEN ! too many arguments or total number of items too large
+	  CALL QLXERR(81021,'QLXCALL')
+	  ERR = .TRUE.
+	ELSE IF( (NARG.LT.LIM1 .OR. NARG.GT.LIM2))THEN                ! number of arguments not within specified range for this routine
+	    CALL QLXERR(81022,'QLXCALL')
+	    ERR = .TRUE.
+	ELSE 
+	    call set_content_of_location(ICOUNT,1,NARG)   ! set number of actukal arguments to this routine
+	    JUNK=RMTCALL(SUB,ADR)                         ! perform external call, ADR is list of argument addresses
+	    call set_content_of_location(ICOUNT,1,0)      ! reset number of arguments to zero after call returns
+	    CALL QLXFLSH('$')                             ! flush rest of input line
+	ENDIF 
       ENDIF 
       RETURN
       END
@@ -648,54 +636,54 @@ end module
       IF((NC.LE.LAST))THEN    ! data available in line buffer ?
          QLXCHR=INLINE(NC:NC) ! return current character
          NC=NC+1              ! bump current char pointer
-      ELSE                    ! buffer is empty
-         IF( (.NOT. EOFL))THEN
+
+      ELSE IF( (.NOT. EOFL))THEN                    ! buffer is empty
 1           CONTINUE
-            IF((READREC.GT.CURREC))THEN
-               READREC=0
-            ENDIF 
-            IF((READREC.EQ.0))THEN                               ! NOT READING FROM PAST HISTORY
-               READ(INPFILE,FMT1,END=10)INLINE(21:(INLB-1))        ! read pos 21 and after
-               CURREC = CURREC + 1
-               WRITE(TMPFILE,FMT1,REC=CURREC)INLINE(21:(INLB-1))   ! WRITE LINE TO PAST HISTORY
-            ELSE                                                 ! READING FROM PAST HISTORY
-               READ(TMPFILE,FMT1,REC=READREC)INLINE(21:(INLB-1))
-               READREC = READREC + 1                             ! bump record number
-            ENDIF 
-            INLINE(1:20) = ' '                                   ! set pushback area to blanks
-            COMMENT = .FALSE.
-            PRTFLAG = SKIPFLG
-            IF( (INLINE(21:21).EQ.'C' .OR. INLINE(21:21).EQ.'*' .OR. INLINE(21:21) .EQ.'#'))THEN
-               IF( (PRTFLAG.EQ. 0))THEN   ! not skipping
-                  COMMENT = .TRUE.
-                  PRTFLAG = 3             ! comment marker
-               ELSE 
-                  COMMENT = .TRUE.
-               ENDIF 
-            ENDIF 
-            WRITE(6,FMT2)   SKIPMSG(PRTFLAG),trim( INLINE(21:(INLB-1)) ) ! print line
-            IF( ((INLINE.EQ.' ') .OR. (COMMENT)))THEN                    ! blank line or comment, get next line
-               GOTO 1
-            ENDIF 
-            LAST=(INLB-1)
-23014       IF((LAST.GT.21 .AND.INLINE(LAST:LAST).EQ.' '))THEN  ! remove trailing blanks
-               LAST=LAST-1
-               GOTO 23014
-            ENDIF 
-            IF( (INLINE(LAST:LAST) .EQ.'_'))THEN
-               LAST = LAST-1
-            ELSE 
-               IF( (INLINE(LAST:LAST) .NE.','))THEN
-                  LAST = LAST+1
-                  INLINE(LAST:LAST) ='$'  ! END OF LINE marker set if line does not end with ,
-               ENDIF 
-            ENDIF 
-            QLXCHR=INLINE(21:21)     ! return first char in line buffer
-            NC=22                    ! bump pointer
-         ELSE ! OOPS, hitting end of file
-            CALL QLXERR(81008,'QLXCHR')
-            CALL ABORT
-         ENDIF 
+	  IF((READREC.GT.CURREC))THEN
+	      READREC=0
+	  ENDIF 
+	  IF((READREC.EQ.0))THEN                               ! NOT READING FROM PAST HISTORY
+	      READ(INPFILE,FMT1,END=10)INLINE(21:(INLB-1))        ! read pos 21 and after
+	      CURREC = CURREC + 1
+	      WRITE(TMPFILE,FMT1,REC=CURREC)INLINE(21:(INLB-1))   ! WRITE LINE TO PAST HISTORY
+	  ELSE                                                 ! READING FROM PAST HISTORY
+	      READ(TMPFILE,FMT1,REC=READREC)INLINE(21:(INLB-1))
+	      READREC = READREC + 1                             ! bump record number
+	  ENDIF 
+	  INLINE(1:20) = ' '                                   ! set pushback area to blanks
+	  COMMENT = .FALSE.
+	  PRTFLAG = SKIPFLG
+	  IF( (INLINE(21:21).EQ.'C' .OR. INLINE(21:21).EQ.'*' .OR. INLINE(21:21) .EQ.'#'))THEN
+	      IF( (PRTFLAG.EQ. 0))THEN   ! not skipping
+		COMMENT = .TRUE.
+		PRTFLAG = 3             ! comment marker
+	      ELSE 
+		COMMENT = .TRUE.
+	      ENDIF 
+	  ENDIF 
+	  WRITE(6,FMT2)   SKIPMSG(PRTFLAG),trim( INLINE(21:(INLB-1)) ) ! print line
+	  IF( ((INLINE.EQ.' ') .OR. (COMMENT)))THEN                    ! blank line or comment, get next line
+	      GOTO 1
+	  ENDIF 
+	  LAST=(INLB-1)
+23014     IF((LAST.GT.21 .AND.INLINE(LAST:LAST).EQ.' '))THEN  ! remove trailing blanks
+	      LAST=LAST-1
+	      GOTO 23014
+	  ENDIF 
+	  IF( (INLINE(LAST:LAST) .EQ.'_'))THEN
+	      LAST = LAST-1
+	  ELSE 
+	      IF( (INLINE(LAST:LAST) .NE.','))THEN
+		LAST = LAST+1
+		INLINE(LAST:LAST) ='$'  ! END OF LINE marker set if line does not end with ,
+	      ENDIF 
+	  ENDIF 
+	  QLXCHR=INLINE(21:21)     ! return first char in line buffer
+	  NC=22                    ! bump pointer
+
+      ELSE ! OOPS, hitting end of file
+	  CALL QLXERR(81008,'QLXCHR')
+	  CALL ABORT
       ENDIF 
       RETURN
 
@@ -1257,44 +1245,40 @@ end module
       ENDIF
 
       IF((LENG.GE.21))THEN   ! abusively large number
-         QLXNUM=5
+	  QLXNUM=5
+
+      ELSE IF((ILX.EQ.0))THEN   ! no decimal point
+	  IF((I.NE.'B'))THEN
+	      QLXNUM=1
+	  ELSE 
+	      QLXNUM=6
+	      I=QLXCHR()
+	      DO 23022  J=LENG,1,-1
+		IF((IB(J:J).GT.'7'))THEN
+		    QLXNUM=5
+		ENDIF 
+		CTMP = IB(J:J)
+		IB(20-LENG+J:20-LENG+J)=CTMP
+23022         CONTINUE 
+	      DO 23026  J=1,20-LENG
+		IB(J:J)='0'
+23026         CONTINUE 
+	      LENG=20
+	  ENDIF 
+
+      ELSE IF((LENG.GT.1))THEN              ! decimal point
+	  IF((IB(LENG:LENG).EQ.'.'))THEN
+	    QLXNUM=2
+	  ELSE IF((IB(LENG:LENG).GE.'0' .AND. IB(LENG:LENG).LE.'9'))THEN
+	      QLXNUM=2
+	  ELSE 
+	      QLXNUM=5
+	  ENDIF 
+
       ELSE 
-         IF((ILX.EQ.0))THEN   ! no decimal point
-            IF((I.NE.'B'))THEN
-               QLXNUM=1
-            ELSE 
-               QLXNUM=6
-               I=QLXCHR()
-               DO 23022  J=LENG,1,-1
-                  IF((IB(J:J).GT.'7'))THEN
-                     QLXNUM=5
-                  ENDIF 
-                  CTMP = IB(J:J)
-                  IB(20-LENG+J:20-LENG+J)=CTMP
-23022          CONTINUE 
-               DO 23026  J=1,20-LENG
-                  IB(J:J)='0'
-23026          CONTINUE 
-               LENG=20
-            ENDIF 
-         ELSE               ! decimal point
-            IF((LENG.GT.1))THEN
-               IF((IB(LENG:LENG).EQ.'.'))THEN
-                  QLXNUM=2
-               ELSE 
-                  IF((IB(LENG:LENG).GE.'0' .AND. IB(LENG:LENG).LE.'9'))THEN
-                     QLXNUM=2
-                  ELSE 
-                     QLXNUM=5
-                  ENDIF 
-               ENDIF 
-            ELSE 
-               QLXNUM=5
-            ENDIF 
-         ENDIF 
+	  QLXNUM=5
       ENDIF 
       CALL QLXBAK(I)
-!
       RETURN
       END
 !
@@ -1701,61 +1685,60 @@ end module
          RETURN
       ENDIF 
       TOKEN = TOK
+
       IF((TOKEN.EQ.'(' .OR. TOKEN.EQ.'['))THEN
          NOPER = MIN(NOPER+1 , MAXOPS)
          PILEOP(NOPER) = TOKEN
-      ELSE 
-         IF((TOKEN.EQ.')'))THEN
-23006       IF((PILEOP(NOPER) .NE.'(' .AND.   PILEOP(NOPER) .NE.'[' .AND.   PILEOP(NOPER) .NE.'$'))THEN
-               CALL QLXOPR(TOKENS,NTOKEN,TOKTYPE,MOD(QLXPRI(PILEOP(NOPER)),100),ERR)
-               NOPER = NOPER - 1
-               GOTO 23006
-            ENDIF 
-            IF((PILEOP(NOPER).EQ.'('))THEN
-               NOPER = NOPER-1
-            ELSE 
-               ERR = .TRUE.
-            ENDIF 
-         ELSE 
-            IF((TOKEN.EQ.']'))THEN
+
+      ELSE IF((TOKEN.EQ.')'))THEN
+23006     IF((PILEOP(NOPER) .NE.'(' .AND.   PILEOP(NOPER) .NE.'[' .AND.   PILEOP(NOPER) .NE.'$'))THEN
+	    CALL QLXOPR(TOKENS,NTOKEN,TOKTYPE,MOD(QLXPRI(PILEOP(NOPER)),100),ERR)
+	    NOPER = NOPER - 1
+	    GOTO 23006
+	  ENDIF 
+	  IF((PILEOP(NOPER).EQ.'('))THEN
+	      NOPER = NOPER-1
+	  ELSE 
+	      ERR = .TRUE.
+	  ENDIF 
+
+      ELSE IF((TOKEN.EQ.']'))THEN
 ! print *,' qlxrpn, start processing ] '
-23012          IF((PILEOP(NOPER) .NE.'(' .AND.   PILEOP(NOPER) .NE.'['  .AND.   PILEOP(NOPER) .NE.'$'))THEN
-                  CALL QLXOPR(TOKENS,NTOKEN,TOKTYPE,MOD(QLXPRI(PILEOP(NOPER)),100),ERR)
+23012     IF((PILEOP(NOPER) .NE.'(' .AND.   PILEOP(NOPER) .NE.'['  .AND.   PILEOP(NOPER) .NE.'$'))THEN
+	    CALL QLXOPR(TOKENS,NTOKEN,TOKTYPE,MOD(QLXPRI(PILEOP(NOPER)),100),ERR)
 ! print *,' qlxrpn, operating on ',PILEOP(NOPER)
-                  NOPER = NOPER - 1
-                  GOTO 23012
-               ENDIF 
+	    NOPER = NOPER - 1
+	    GOTO 23012
+	  ENDIF 
 ! print *,' qlxrpn, pileop(noper) after = ',PILEOP(NOPER)
-               IF((PILEOP(NOPER).EQ.'['))THEN
-                  CALL QLXOPR(TOKENS,NTOKEN,TOKTYPE,MOD(QLXPRI(']'),100),ERR)
-                  NOPER = NOPER-1
-               ELSE 
-                  ERR = .TRUE.
-               ENDIF 
+	  IF((PILEOP(NOPER).EQ.'['))THEN
+	    CALL QLXOPR(TOKENS,NTOKEN,TOKTYPE,MOD(QLXPRI(']'),100),ERR)
+	    NOPER = NOPER-1
+	  ELSE 
+	    ERR = .TRUE.
+	  ENDIF 
 ! print *,' qlxrpn, end   processing ] '
-            ELSE 
-               IF((TOKEN.EQ.'$'))THEN
-23018             IF((PILEOP(NOPER) .NE.'(' .AND.   PILEOP(NOPER) .NE.'['  .AND.   PILEOP(NOPER) .NE.'$'))THEN
-                     CALL QLXOPR(TOKENS,NTOKEN,TOKTYPE,MOD(QLXPRI(PILEOP(NOPER)),100),ERR)
-                     NOPER = NOPER - 1
-                     GOTO 23018
-                  ENDIF 
-                  IF((PILEOP(NOPER).EQ.'$'))THEN
-                     NOPER = NOPER-1
-                  ELSE 
-                     ERR = .TRUE.
-                  ENDIF 
-               ELSE 
-23022             IF((QLXPRIL(PILEOP(NOPER)).GT.QLXPRI(TOKEN)))THEN
-                     CALL QLXOPR(TOKENS,NTOKEN,TOKTYPE,MOD(QLXPRI(PILEOP(NOPER)),100),ERR)
-                     NOPER = NOPER -1
-                     GOTO 23022
-                  ENDIF 
-                  NOPER = MIN(NOPER+1 , MAXOPS)
-                  PILEOP(NOPER) = TOKEN
-               ENDIF 
-            ENDIF 
-         ENDIF 
+
+      ELSE IF((TOKEN.EQ.'$'))THEN
+23018     IF((PILEOP(NOPER) .NE.'(' .AND.   PILEOP(NOPER) .NE.'['  .AND.   PILEOP(NOPER) .NE.'$'))THEN
+	    CALL QLXOPR(TOKENS,NTOKEN,TOKTYPE,MOD(QLXPRI(PILEOP(NOPER)),100),ERR)
+	    NOPER = NOPER - 1
+	    GOTO 23018
+	  ENDIF 
+	  IF((PILEOP(NOPER).EQ.'$'))THEN
+	      NOPER = NOPER-1
+	  ELSE 
+	      ERR = .TRUE.
+	  ENDIF 
+
+      ELSE 
+23022     IF((QLXPRIL(PILEOP(NOPER)).GT.QLXPRI(TOKEN)))THEN
+	    CALL QLXOPR(TOKENS,NTOKEN,TOKTYPE,MOD(QLXPRI(PILEOP(NOPER)),100),ERR)
+	    NOPER = NOPER -1
+	    GOTO 23022
+	  ENDIF 
+	  NOPER = MIN(NOPER+1 , MAXOPS)
+	  PILEOP(NOPER) = TOKEN
       ENDIF 
       RETURN
       END
@@ -1851,53 +1834,57 @@ end module
       ENDIF 
       LENG=1
       TOKEN(1:1)=IC
+
       IF(((IC.GE.'A'.AND.IC.LE.'Z').OR.IC.EQ.'@'.OR.IC.EQ.'_'   .OR. (IC.GE. 'a' .AND. IC.LE. 'z')))THEN    ! alphanumeric token
-         IC=QLXCHR()
-23005    IF(((IC.GE.'A' .AND.IC .LE.'Z').OR.   (IC.GE.'0' .AND. IC.LE.'9')   .OR. (IC.GE. 'a' .AND. IC.LE. 'z')))THEN
-            LENG=MIN(81,LENG+1)
-            TOKEN(LENG:LENG)=IC
-            IC=QLXCHR()
-            GOTO 23005
-         ENDIF 
-         IF((LENG.GT.8))THEN
-            TYPE=3             ! alphanumeric token , length >  8, STRING
-         ELSE 
-            TYPE=0             ! alphanumeric token , length <= 8, SYMBOL
-         ENDIF 
-         CALL QLXBAK(IC)
-      ELSE IF((IC.EQ.'''' .OR. IC.EQ.'"'))THEN     ! quoted string (with ' or ")
-	LENG=0
-23011   IF(.TRUE.)THEN
-	  LENG=MIN(80,LENG+1)
-	  TOKEN(LENG:LENG)=QLXCHR()
-	  IF(.NOT.(TOKEN(LENG:LENG).EQ. IC))THEN
-	    GOTO 23011
+	  IC=QLXCHR()
+23005     IF(((IC.GE.'A' .AND.IC .LE.'Z').OR.   (IC.GE.'0' .AND. IC.LE.'9')   .OR. (IC.GE. 'a' .AND. IC.LE. 'z')))THEN
+	    LENG=MIN(81,LENG+1)
+	    TOKEN(LENG:LENG)=IC
+	    IC=QLXCHR()
+	    GOTO 23005
 	  ENDIF 
-	ENDIF 
-	TOKEN(LENG:LENG) = ' '
-	LENG = LENG -1
-	IF( (IC .EQ.'"'))THEN   ! quoted with ", max allowed length is KARMOT (usually 4)
-	    LENG = MIN(LENG,KARMOT)
-	ENDIF 
-	TYPE=3             ! STRING
+	  IF((LENG.GT.8))THEN
+	    TYPE=3             ! alphanumeric token , length >  8, STRING
+	  ELSE 
+	    TYPE=0             ! alphanumeric token , length <= 8, SYMBOL
+	  ENDIF 
+	  CALL QLXBAK(IC)
+
+      ELSE IF((IC.EQ.'''' .OR. IC.EQ.'"'))THEN     ! quoted string (with ' or ")
+	  LENG=0
+23011     IF(.TRUE.)THEN
+	    LENG=MIN(80,LENG+1)
+	    TOKEN(LENG:LENG)=QLXCHR()
+	    IF(.NOT.(TOKEN(LENG:LENG).EQ. IC))THEN
+	      GOTO 23011
+	    ENDIF 
+	  ENDIF 
+	  TOKEN(LENG:LENG) = ' '
+	  LENG = LENG -1
+	  IF( (IC .EQ.'"'))THEN   ! quoted with ", max allowed length is KARMOT (usually 4)
+	      LENG = MIN(LENG,KARMOT)
+	  ENDIF 
+	  TYPE=3             ! STRING
+
       ELSE IF(((IC.GE.'0' .AND. IC.LE.'9')   .OR.(IC.EQ.'.')))THEN !   number
 	  TYPE=QLXNUM(TOKEN,LENG)   ! 1, 2, 5, 6 from qlxnum
 	  ISGN=1
-!
+
       ELSE IF(((IC.EQ.'+' .OR. IC.EQ.'-').AND.(.NOT.INEXPR) ))THEN  ! sign detected, not in expression
-	IF((IC.EQ.'+'))THEN
-	    ISGN=1
-	ELSE 
-	    ISGN=-1
-	ENDIF 
-	IC=QLXCHR()
-	IF(((IC.GE.'0' .AND. IC.LE.'9').OR. IC.EQ.'.'))THEN
-	    TOKEN(1:1)=IC
-	    TYPE=QLXNUM(TOKEN,LENG)   ! 1, 2, 5, 6 from qlxnum
-	ELSE 
-	    CALL QLXBAK(IC)
-	    TYPE=4
-	ENDIF 
+	  IF((IC.EQ.'+'))THEN
+	      ISGN=1
+	  ELSE 
+	      ISGN=-1
+	  ENDIF 
+	  IC=QLXCHR()
+	  IF(((IC.GE.'0' .AND. IC.LE.'9').OR. IC.EQ.'.'))THEN
+	      TOKEN(1:1)=IC
+	      TYPE=QLXNUM(TOKEN,LENG)   ! 1, 2, 5, 6 from qlxnum
+	  ELSE 
+	      CALL QLXBAK(IC)
+	      TYPE=4
+	  ENDIF 
+
       ELSE IF((IC.EQ.'*'))THEN        ! * or ** operator
 	  TYPE =4
 	  IC=QLXCHR()
@@ -1907,18 +1894,21 @@ end module
 	  ELSE 
 	    CALL QLXBAK(IC)
 	  ENDIF 
+
       ELSE IF((IC.EQ.'<' .OR. IC.EQ.'>' .OR. IC.EQ.'=' .OR. IC.EQ.':'))THEN  ! < <= > >= == <>>< := operator
-	TYPE =4
-	IC=QLXCHR()
-	IF((IC.EQ.'<' .OR. IC.EQ.'>' .OR. IC.EQ.'='))THEN
-	    LENG = 2
-	    TOKEN(2:2) = IC
-	ELSE 
-	    CALL QLXBAK(IC)
-	ENDIF 
+	  TYPE =4
+	  IC=QLXCHR()
+	  IF((IC.EQ.'<' .OR. IC.EQ.'>' .OR. IC.EQ.'='))THEN
+	      LENG = 2
+	      TOKEN(2:2) = IC
+	  ELSE 
+	      CALL QLXBAK(IC)
+	  ENDIF 
+
       ELSE                    ! other single character operator
-	TYPE=4
+	  TYPE=4
       ENDIF 
+
       IF(((LENG.GT.80) .OR. (TYPE.EQ.5)))THEN   ! error or string too long
          TOKEN = 'SCRAP'
          TYPE=5
@@ -2038,26 +2028,28 @@ end module
 	ENDIF 
 ! print *,'token = ',"'"//trim(TOKEN)//"'",type
 	FIRST = .FALSE.      ! first token already behind us
+
 	IF((TYPE.EQ.0))THEN               ! SYMBOL
-	  NTOKEN = NTOKEN + 1
-	  CALL QLXFND(TOKEN(1:8),LOCVAR,LOCCNT,LIMITES,ITYP)
-	  IF((ITYP.NE.0 .AND. ITYP.NE.1))THEN  ! 
-	      ERR=.TRUE.
-	  ENDIF 
-	  TOKENS(NTOKEN) = LOCVAR         ! push address of symbol unto stack
-	  TOKTYPE(NTOKEN) = LIMITES + 1   ! it is an address, maximum index allowed is mod(LIMITES,100)
-	  nextchar = QLXSKP(' ')          ! take a peek at next non blank character
-	  call QLXBAK(nextchar)           ! and push it back
-	  if(nextchar .ne. '[') then      ! no indexing on symbol, put value instead of address on stack
-	    TOKENS(NTOKEN) = JVAL
-	    TOKTYPE(NTOKEN) = 0
+	    NTOKEN = NTOKEN + 1
+	    CALL QLXFND(TOKEN(1:8),LOCVAR,LOCCNT,LIMITES,ITYP)
+	    IF((ITYP.NE.0 .AND. ITYP.NE.1))THEN  ! 
+		ERR=.TRUE.
+	    ENDIF 
+	    TOKENS(NTOKEN) = LOCVAR         ! push address of symbol unto stack
+	    TOKTYPE(NTOKEN) = LIMITES + 1   ! it is an address, maximum index allowed is mod(LIMITES,100)
+	    nextchar = QLXSKP(' ')          ! take a peek at next non blank character
+	    call QLXBAK(nextchar)           ! and push it back
+	    if(nextchar .ne. '[') then      ! no indexing on symbol, put value instead of address on stack
+	      TOKENS(NTOKEN) = JVAL
+	      TOKTYPE(NTOKEN) = 0
 ! print *,'QLXXPR using symbol value'
-	  endif
+	    endif
 ! print *,'QLXXPR symbol',trim(TOKEN(1:8)),TOKTYPE(NTOKEN),jval,TOKENS(NTOKEN)
-	  IF((.NOT. UNARY))THEN
-	      ERR=.TRUE.
-	  ENDIF 
-	  UNARY = .FALSE.
+	    IF((.NOT. UNARY))THEN
+		ERR=.TRUE.
+	    ENDIF 
+	    UNARY = .FALSE.
+
 	ELSE IF((TYPE.EQ.1 .OR. TYPE.EQ.2))THEN   ! numerical value (integer or float) 
 	    NTOKEN = NTOKEN + 1
 	    TOKENS(NTOKEN) = JVAL
@@ -2066,39 +2058,42 @@ end module
 	      ERR=.TRUE.
 	    ENDIF 
 	    UNARY = .FALSE.
+
 	ELSE IF((QLXPRI(TOKEN(1:4)).GT.0))THEN    ! operator with valid priority (arithmetic or logical operator)
-	  IF((TOKEN(1:2).EQ.'( '))THEN       ! start (
-	      PLEV = PLEV + 1
-	  ELSE IF((TOKEN(1:2).EQ.') '))THEN       ! end )
-	    PLEV = PLEV - 1
-	  ELSE IF((TOKEN(1:2).EQ.'[ '))THEN       ! start [
-	      BLEV = BLEV + 1
-	  ELSE IF((TOKEN(1:2).EQ.'] '))THEN       ! end }
-	    BLEV = BLEV - 1
-	  ENDIF 
-! print *,'plev =',plev
-	  IF((PLEV.LT.0 .OR. BLEV.LT.0))THEN  ! block level < 0, BREAK
-	      FINI = .TRUE.
-	      CALL QLXBAK(TOKEN(1:1))
-	      GOTO 23001
-	  ENDIF 
-	  IF((UNARY))THEN                        ! unary operator
-	    IF((TOKEN(1:2).EQ.'+ '))THEN         ! +
-	      TOKEN(1:2) = 'U+'
-	    ELSE IF((TOKEN(1:2).EQ.'- '))THEN    ! -
-		TOKEN(1:2) = 'U-'
-	    ELSE IF((TOKEN(1:2).NE.'( ' .AND. TOKEN(1:2).NE.'[ '))THEN   ! only valid choice othrer than + or - is ( or [
-	      ERR=.TRUE.
+	    IF((TOKEN(1:2).EQ.'( '))THEN       ! start (
+		PLEV = PLEV + 1
+	    ELSE IF((TOKEN(1:2).EQ.') '))THEN       ! end )
+	      PLEV = PLEV - 1
+	    ELSE IF((TOKEN(1:2).EQ.'[ '))THEN       ! start [
+		BLEV = BLEV + 1
+	    ELSE IF((TOKEN(1:2).EQ.'] '))THEN       ! end }
+	      BLEV = BLEV - 1
 	    ENDIF 
-	  ENDIF 
-	  UNARY = TOKEN(1:1).NE.')' .AND. TOKEN(1:1).NE.']'
+! print *,'plev =',plev
+	    IF((PLEV.LT.0 .OR. BLEV.LT.0))THEN  ! block level < 0, BREAK
+		FINI = .TRUE.
+		CALL QLXBAK(TOKEN(1:1))
+		GOTO 23001
+	    ENDIF 
+	    IF((UNARY))THEN                        ! unary operator
+		IF((TOKEN(1:2).EQ.'+ '))THEN         ! +
+		  TOKEN(1:2) = 'U+'
+		ELSE IF((TOKEN(1:2).EQ.'- '))THEN    ! -
+		    TOKEN(1:2) = 'U-'
+		ELSE IF((TOKEN(1:2).NE.'( ' .AND. TOKEN(1:2).NE.'[ '))THEN   ! only valid choice othrer than + or - is ( or [
+		  ERR=.TRUE.
+		ENDIF 
+	    ENDIF 
+	    UNARY = TOKEN(1:1).NE.')' .AND. TOKEN(1:1).NE.']'
 ! print *,'calling QLXRPN with ',trim(token)
-	  CALL QLXRPN(TOKEN,TOKENS,MAXTKNS,NTOKEN,TOKTYPE,PILEOP,MAXOPS,NOPER,ERR)
+	    CALL QLXRPN(TOKEN,TOKENS,MAXTKNS,NTOKEN,TOKTYPE,PILEOP,MAXOPS,NOPER,ERR)
 ! print *,'called QLXRPN with ',trim(token)
+
 	ELSE IF((TOKEN(1:1).EQ.',' .OR. TOKEN(1:1).EQ.'$' .OR. TOKEN(1:2).EQ.':='))THEN  ! comma, end of line, assignment operator : end of expression
 	    CALL QLXRPN('$',TOKENS,MAXTKNS,NTOKEN,TOKTYPE,PILEOP,MAXOPS,NOPER,ERR)
 	    FINI = .TRUE.
 	    CALL QLXBAK(TOKEN(1:1))
+
 	ELSE 
 	    WRITE(6,'(A8,A)')TOKEN(1:8),' IS INVALID'
 	    ERR = .TRUE.
@@ -2217,18 +2212,21 @@ end module
 !       CALL QLXINX(QLXPRNT,'PRINT',IDUM,0202,2)
 !       CALL QLXINX(QLXNVAR,'DEFINE',IDUM,0202,2)
 !       CALL QLXINX(QLXUNDF,'UNDEF',IDUM,0101,2)
-23002 IF((.NOT.FIN .AND. NERR.LT.KERRMAX .AND. NSTRUC.LT.MAXSTRU))THEN
+23002 IF((.NOT.FIN .AND. NERR.LT.KERRMAX .AND. NSTRUC.LT.MAXSTRU))THEN   ! while
          SKIPFLG = SKIPF(NSTRUC)
          ERR=.FALSE.
          CALL QLXTOK
          IF((TYPE.EQ.0))THEN
             CALL QLXFND(TOKEN,LOCVAR,LOCCNT,LIMITS,ITYP)
+
             IF((ITYP.EQ.1 .AND. SKIPF(NSTRUC).EQ.0))THEN                    ! a SYMBOL of type 1 (assignation target)
-               call get_content_of_location(LOCCNT,1,IICNT)
-               CALL QLXASG(LOCVAR,IICNT,LIMITS,ERR)
-               call set_content_of_location(LOCCNT,1,IICNT)
+		call get_content_of_location(LOCCNT,1,IICNT)
+		CALL QLXASG(LOCVAR,IICNT,LIMITS,ERR)
+		call set_content_of_location(LOCCNT,1,IICNT)
+
             ELSE IF((ITYP.EQ.2 .AND. SKIPF(NSTRUC).EQ.0))THEN               ! a symbol of type 2 (subroutine call)
-	      CALL QLXCALL(LOCVAR,LOCCNT,LIMITS,ERR)
+		CALL QLXCALL(LOCVAR,LOCCNT,LIMITS,ERR)
+
 	    ELSE IF((ITYP.EQ.3))THEN                                        ! IF
 		NSTRUC = NSTRUC + 1
 		STYPE(NSTRUC) = ITYP
@@ -2257,13 +2255,15 @@ end module
 		  ENDIF 
 		ENDIF 
 		CALL QLXFLSH('$')
+
 	    ELSE IF((ITYP.EQ.4))THEN                                        ! ELSE
-	      IF((STYPE(NSTRUC).NE.3))THEN
-		  GOTO 23003
-	      ENDIF 
-	      STYPE(NSTRUC) = ITYP
-	      SKIPF(NSTRUC) = NXTELSE(SKIPF(NSTRUC))
-	      CALL QLXFLSH('$')
+		IF((STYPE(NSTRUC).NE.3))THEN
+		    GOTO 23003
+		ENDIF 
+		STYPE(NSTRUC) = ITYP
+		SKIPF(NSTRUC) = NXTELSE(SKIPF(NSTRUC))
+		CALL QLXFLSH('$')
+
 	    ELSE IF((ITYP.EQ.5))THEN                                        ! ENDIF
 		IF((STYPE(NSTRUC).NE.3 .AND. STYPE(NSTRUC).NE.4))THEN
 		  GOTO 23003
@@ -2271,39 +2271,41 @@ end module
 		SKIPF(NSTRUC) = 0
 		NSTRUC = NSTRUC - 1
 		CALL QLXFLSH('$')
+
 	    ELSE IF((ITYP.EQ.6))THEN                                        ! WHILE
-	      NSTRUC = NSTRUC + 1
-	      STYPE(NSTRUC) = ITYP
-	      SKIPF(NSTRUC) = NEXTIF(SKIPF(NSTRUC-1))
-	      IF( (READREC.NE. 0))THEN
-		  READBSE(NSTRUC) = READREC -1
-	      ELSE 
-		  READBSE(NSTRUC) = CURREC
-	      ENDIF 
-	      IF((SKIPF(NSTRUC).EQ.0))THEN
-		  CALL QLXTOK
-		  IF((TOKEN(1:1).NE.'$'))THEN
+		NSTRUC = NSTRUC + 1
+		STYPE(NSTRUC) = ITYP
+		SKIPF(NSTRUC) = NEXTIF(SKIPF(NSTRUC-1))
+		IF( (READREC.NE. 0))THEN
+		    READBSE(NSTRUC) = READREC -1
+		ELSE 
+		    READBSE(NSTRUC) = CURREC
+		ENDIF 
+		IF((SKIPF(NSTRUC).EQ.0))THEN
+		    CALL QLXTOK
+		    IF((TOKEN(1:1).NE.'$'))THEN
 #if defined(WITH_EXPRESSIONS)
-! print *,'QLXXPR 0002 avant'
-		    CALL QLXXPR(ERR)
-! print *,'QLXXPR 0002 apres'
+  ! print *,'QLXXPR 0002 avant'
+		      CALL QLXXPR(ERR)
+  ! print *,'QLXXPR 0002 apres'
 #else
-		    ERR = .true.
+		      ERR = .true.
 #endif
-		    IF((ERR))THEN
-			GOTO 23003
+		      IF((ERR))THEN
+			  GOTO 23003
+		      ENDIF 
+		      IF((TYPE.EQ.8))THEN
+  !                                       call get_content_of_location(JVAL,1,JVAL)
+		      ENDIF 
+		      IF((IAND(JVAL,ishft(-1,32-(16))).EQ.0))THEN
+			  SKIPF(NSTRUC) = 1
+		      ENDIF 
+		    ELSE 
+		      CALL QLXBAK('$')
 		    ENDIF 
-		    IF((TYPE.EQ.8))THEN
-!                                       call get_content_of_location(JVAL,1,JVAL)
-		    ENDIF 
-		    IF((IAND(JVAL,ishft(-1,32-(16))).EQ.0))THEN
-			SKIPF(NSTRUC) = 1
-		    ENDIF 
-		  ELSE 
-		    CALL QLXBAK('$')
-		  ENDIF 
-	      ENDIF 
-	      CALL QLXFLSH('$')
+		ENDIF 
+		CALL QLXFLSH('$')
+
 	    ELSE IF((ITYP.EQ.7))THEN                                        ! ENDWHILE
 		IF((STYPE(NSTRUC).NE.6))THEN
 		  GOTO 23003
@@ -2314,12 +2316,15 @@ end module
 		SKIPF(NSTRUC) = 0
 		NSTRUC = NSTRUC - 1
 		CALL QLXFLSH('$')
+
 	    ELSE IF((ITYP.GE.10 .AND. ITYP.LE.13 .AND. SKIPF(NSTRUC).EQ.0))THEN   ! END (10) or ENDREAD(13)
-	      KERR=NERR
-	      KEND=ITYP-10
-	      FIN=.TRUE.
+		KERR=NERR
+		KEND=ITYP-10
+		FIN=.TRUE.
+
 	    ELSE IF((SKIPF(NSTRUC).NE.0))THEN
 		CALL QLXFLSH('$')
+
 	    ELSE 
 		CALL QLXERR(21015,'READLX')
 		ERR=.TRUE.
@@ -2332,7 +2337,7 @@ end module
             CALL QLXFLSH('$')
          ENDIF 
          GOTO 23002
-      ENDIF 
+      ENDIF     ! end while
 23003 CONTINUE 
       IF((NSTRUC.GT.1))THEN
          WRITE(6,*)' ERREUR DANS LA STRUCTURE DES BLOCS IF THEN ELSE'
