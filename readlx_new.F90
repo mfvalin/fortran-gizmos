@@ -475,12 +475,14 @@ end module
 !       COMMON /QLXFMT2/ KARMOT
 !
 
-      EXTERNAL RMTCALL, QLXADR, QLXVAL
+      EXTERNAL RMTCALL, QLXADR, QLXVAL  !, QLXSKP
       INTEGER  RMTCALL, QLXVAL
       INTEGER LIM1,LIM2,JLEN,PREVI
       Integer(kind=8) :: LOCDUM, QLXADR
       CHARACTER(len=8) :: KLE
       integer :: i, j, JUNK, NPRM0
+      logical :: expression_allowed
+!       character(len=1) :: nextchar, QLXSKP
 !
       LOGICAL FIN,INLIST
 !
@@ -507,11 +509,22 @@ end module
          CALL QLXERR(81018,'QLXCALL')
          ERR = .TRUE.
       ENDIF 
-
+      expression_allowed = .true.
 23004 IF( (.NOT. ERR .AND. .NOT.FIN))THEN     ! while no error and not end of arguments
         CALL QLXTOK
 
         IF( (PREVI .EQ.4))THEN       ! previous token was an operator "(" , "[", "}", ","
+            ! may want to check here for an expression (.....) if previous was '(' , or ',' , or '['  (expression_allowed == .true.)
+            ! if(expression_allowed) if(next token is '(' ) process expression just like in QLXASG
+            ! we "disguise" expression result as type = 1, result is in JVAL
+            if(expression_allowed) then
+              if(token(1:1) == '(' .and. TYPE .EQ.4) then
+                call QLXXPR(ERR)
+                if(err) goto 23004
+                if(TYPE.EQ.8) TYPE = 1
+              endif
+            endif
+            expression_allowed = .false.
             IF( (TYPE .EQ.0))THEN     ! a short (<=8 char) token (SYMBOL)
                 KLE = TOKEN(1:8)
                 PREVI =7               ! not an operator
@@ -528,8 +541,9 @@ end module
                 ENDIF 
                 NDOPES = MIN(NDOPES+1,(MAX_ARGL+1))      ! bump collected values list counter
                 DOPES(NDOPES) = TYPE + 1 * 256 + (NPRM-NPRM0)*256 * 256   ! type, code 1, number of items
+                expression_allowed = .false.
 
-            ELSE IF( (TYPE.EQ.1 .OR. TYPE.EQ.2))THEN         ! numerical item
+            ELSE IF( (TYPE.EQ.1 .OR. TYPE.EQ.2))THEN            ! numerical item  ( maybe add type == 8, arithmetic/logical expression)
                 NPRM = MIN(NPRM+1,(MAX_ARGL+1))
                 PARM(NPRM) = JVAL
                 PREVI =7
@@ -542,6 +556,8 @@ end module
                 NDOPES = MIN(NDOPES+1,(MAX_ARGL+1))
                 DOPES(NDOPES) = TYPE + 1 * 256 + (NPRM-NPRM0)*256*256
                 DOPE(NARG) = DOPE(NARG) + 1
+                expression_allowed = .false.
+
             ELSE IF( (TYPE .EQ.3))THEN                       ! long string
                 JLEN = MIN((LEN+KARMOT-1) / KARMOT , (MAX_ARGL+1) - NPRM)
                 IF((.NOT. INLIST))THEN
@@ -557,6 +573,8 @@ end module
                 NPRM = MIN(NPRM+JLEN,(MAX_ARGL+1))
                 DOPE(NARG) = DOPE(NARG) + JLEN
                 PREVI =7
+                expression_allowed = .false.
+
             ELSE IF((TYPE.EQ.4 .AND. TOKEN(1:1).EQ.'[' .AND. .NOT. INLIST))THEN  ! start of a list
                 INLIST = .TRUE.
                 PREVI =4
@@ -564,19 +582,26 @@ end module
                 ADR(NARG) = get_address_from(PARM(NPRM+1))    ! address of current insertion position in list
                 DOPEA(NARG) = NDOPES + 1
                 NPRM0 = NPRM                                  ! start - 1
+                expression_allowed = .true.
+
             ELSE IF((TYPE.EQ.4 .AND. TOKEN(1:1).EQ.')' .AND. NARG.EQ.0))THEN   ! ")", end of arguments
                 FIN = .TRUE.
-                  ELSE 
+                expression_allowed = .false.
+
+            ELSE 
                 CALL QLXERR(81019,'QLXCALL')
                 ERR = .TRUE.
             ENDIF 
 
         ELSE IF( (TYPE.EQ.4 .AND. (TOKEN(1:1).EQ.',' .OR. TOKEN(1:1) .EQ.')')))THEN  ! end of current(last) argument
             FIN = TOKEN(1:1).EQ.')'    ! was last argument if ")"
-            PREVI =4
+            PREVI = 4
+            ! expression_allowed = .true. if TOKEN(1:1).EQ.','
+            expression_allowed = TOKEN(1:1).EQ.','
 
         ELSE IF((TYPE.EQ.4 .AND. TOKEN(1:1).EQ.']' .AND. INLIST))THEN    ! end of list
             INLIST = .FALSE.
+            expression_allowed = .false.
 
         ELSE 
             CALL QLXERR(81020,'QLXCALL')
@@ -834,7 +859,7 @@ end module
       RETURN
       END
 !
-      SUBROUTINE QLXFND(KEY,LOCVAR,LOCCNT,LIMITS,ITYP) ! symbol table lookup
+      SUBROUTINE QLXFND(KEY,LOCVAR,LOCCNT,LIMITS,ITYP) ! symbol table lookup, internal operators, then user defined symbols
       implicit none
       CHARACTER(len=*), intent(IN) :: KEY   ! symbol to look for
       Integer(kind=8) :: LOCVAR             ! address associated to symbol (0 if not applicable)
@@ -866,54 +891,55 @@ end module
 !
       POS = 0
 ! print 2,'entering QLXFND, ikey=',"'"//ikey//"'"
-      DO 23000 I = 1,12              ! look first into basic keyword table
+      do I = 1,12              ! look first into basic keyword table
          IF( (trim(IKEY).EQ. trim(CLEF(I))))THEN
             POS = I
-            GOTO 05
+            exit
          ENDIF 
-23000 CONTINUE 
-05    CONTINUE
+      enddo 
 ! print *,'pos =',pos
       GOTO (10,20,30,40,50,60,70,80,90,100,110,120,130) POS+1
 10    CONTINUE
-      CALL QLXLOOK(LOCVAR,IKEY,LOCCNT,LIMITS,ITYP)  ! not found in basic keyword table
+
+      CALL QLXLOOK(LOCVAR,IKEY,LOCCNT,LIMITS,ITYP)  ! not found in basic keyword table, look into user defined symbols
       GOTO 200
+
 20    CONTINUE
-      ITYP = 10
+      ITYP = 10    ! END
       GOTO 200
 30    CONTINUE
-      ITYP = 3
+      ITYP = 3     ! IF (expression)
       GOTO 200
 40    CONTINUE
-      ITYP = 4
+      ITYP = 4     ! ELSE
       GOTO 200
 50    CONTINUE
-      ITYP = 5
+      ITYP = 5     ! ENDIF
       GOTO 200
 60    CONTINUE
-      ITYP = 6
+      ITYP = 6     ! WHILE (expression)
       GOTO 200
 70    CONTINUE
-      ITYP = 7
+      ITYP = 7     ! ENDWHILE
       GOTO 200
 80    CONTINUE
-      ITYP = 11
+      ITYP = 11    ! ENDDATA
       GOTO 200
 90    CONTINUE
-      ITYP = 12
+      ITYP = 12    ! ENDCASE
       GOTO 200
 100   CONTINUE
-      ITYP = 13
+      ITYP = 13    ! ENDREAD
       GOTO 200
 110   CONTINUE
       ITYP = 2
-      LOCVAR = get_address_from(QLXPRNT)   ! print(QUOI,FORMAT)
+      LOCVAR = get_address_from(QLXPRNT)   ! PRINT(QUOI,FORMAT)
       LOCCNT = get_address_from(DUMMY)
       LIMITS = 202
       GOTO 200
 120   CONTINUE
       ITYP = 2
-      LOCVAR = get_address_from(QLXNVAR)   ! define(KEY,DEFINITION)
+      LOCVAR = get_address_from(QLXNVAR)   ! DEFINE(KEY,DEFINITION)
       LOCCNT = get_address_from(DUMMY)
       LIMITS = 202
 ! write(6,1)'qlxnvar found',LOCVAR,LOCCNT,LIMITS
@@ -921,7 +947,7 @@ end module
       GOTO 200
 130   CONTINUE
       ITYP = 2
-      LOCVAR = get_address_from(QLXUNDF)   ! undef(KEY)
+      LOCVAR = get_address_from(QLXUNDF)   ! UNDEF(KEY)
       LOCCNT =get_address_from(DUMMY)
       LIMITS = 101
 200   CONTINUE
@@ -1014,7 +1040,7 @@ end module
 !           CALL QQLXINS(IVAR,KEY,ICOUNT,LIMITS,ITYP,IVAR)
 
       ELSE 
-         CALL QQLXINS(IVAR,KEY,ICOUNT,LIMITS,ITYP,READLX)
+         CALL QQLXINS(IVAR,KEY,ICOUNT,LIMITS,ITYP,READLX)  ! ITYP should be 1 for variables, 0 for constants
       ENDIF 
       RETURN
       END
@@ -1122,10 +1148,10 @@ end module
 !
 !     DECORTIQUER LES PARAMETRES DE LA CLE
 !
-      IVAR=IPTADR(1,IPNT)
-      ICOUNT=IPTADR(2,IPNT)
-      LIMITS=IAND(ITAB(3,IPNT),ishft(-1,-(32-(24))))
-      ITYP=ishft(ITAB(3,IPNT),-(24))
+      IVAR=IPTADR(1,IPNT)                             ! variable/subroutine address
+      ICOUNT=IPTADR(2,IPNT)                           ! item/argument counter address
+      LIMITS=IAND(ITAB(3,IPNT),ishft(-1,-(32-(24))))  ! lower 24 bits
+      ITYP=ishft(ITAB(3,IPNT),-24)                    ! get type (0, 1, or 2) from table (upper 8 bits)
       RETURN
       END
 !
@@ -2115,11 +2141,11 @@ end module
       IF((.NOT.ERR))THEN
           TOKEN   = ' '
           JVAL   = TOKENS(1)
-          IF((TOKTYPE(1).GT.0))THEN                    ! flag as expression
+          IF((TOKTYPE(1).GT.0))THEN                     ! flag as expression
             TYPE = 8    ! expression
           ELSE IF((ABS(JVAL).LE.MAX_ABS_INT))THEN       ! flag as integer
               TYPE =1   ! integer
-          ELSE                                         ! flag as float
+          ELSE                                          ! flag as float
               TYPE =2   ! float
           ENDIF 
       ELSE
@@ -2172,27 +2198,23 @@ end module
 !       COMMON /QLXFMT/ LINEFMT
 !       COMMON /QLXFMT2/ KARMOT
 !*
-
-      EXTERNAL QLXNVAR,QLXPRNT,QLXUNDF,fnom
-      INTEGER UNIT,KEND,fnom
+      integer, external :: fnom
+      INTEGER :: UNIT, KEND
       Integer(kind=8) :: LOCCNT,LOCVAR
       Integer IICNT
       INTEGER LIMITS,ITYP
       LOGICAL FIN,ERR
-      integer, PARAMETER :: MAXSTRU=20
+      integer, PARAMETER :: MAXSTRU=20     ! max depth of block structure (if/else/while) stact
       INTEGER NXTELSE(0:2), NEXTIF(0:2), STYPE(MAXSTRU), SKIPF(MAXSTRU)
       INTEGER READBSE(MAXSTRU)
       INTEGER NSTRUC,ier,IDUM,KERRMAX,KERR
       character(len=128) :: nomscra
 !
-
-      DATA NXTELSE / 1, 0, 2/
-      DATA NEXTIF  / 0, 2, 2/
+      NXTELSE = [ 1, 0, 2]
+      NEXTIF  = [ 0, 2, 2]
 !
-
 !       DATA KARMOT /04/
 !
-
       WRITE(LINEFMT,'(A,I2,A)') '(25 A',KARMOT,')'  ! format to print an input line, fix it if increasing length of line buffer
       KERRMAX = 999999
       KERR = 0    ! TEMPORAIRE
@@ -2223,7 +2245,7 @@ end module
          SKIPFLG = SKIPF(NSTRUC)
          ERR=.FALSE.
          CALL QLXTOK
-         IF((TYPE.EQ.0))THEN
+         IF((TYPE.EQ.0))THEN                                                ! first item in input line MUST BE A SYMBOL
             CALL QLXFND(TOKEN,LOCVAR,LOCCNT,LIMITS,ITYP)
 
             IF((ITYP.EQ.1 .AND. SKIPF(NSTRUC).EQ.0))THEN                    ! a SYMBOL of type 1 (assignation target)
@@ -2242,9 +2264,7 @@ end module
                   CALL QLXTOK
                   IF((TOKEN(1:1).NE.'$'))THEN
 #if defined(WITH_EXPRESSIONS)
-! print *,'QLXXPR 0001 avant'
                       CALL QLXXPR(ERR)
-! print *,'QLXXPR 0001 apres'
 #else
                       ERR = .true.
 #endif
@@ -2292,9 +2312,7 @@ end module
                     CALL QLXTOK
                     IF((TOKEN(1:1).NE.'$'))THEN
 #if defined(WITH_EXPRESSIONS)
-! print *,'QLXXPR 0002 avant'
                       CALL QLXXPR(ERR)
-! print *,'QLXXPR 0002 apres'
 #else
                       ERR = .true.
 #endif
@@ -2347,7 +2365,7 @@ end module
       ENDIF     ! end while
 23003 CONTINUE 
       IF((NSTRUC.GT.1))THEN
-         WRITE(6,*)' ERREUR DANS LA STRUCTURE DES BLOCS IF THEN ELSE'
+         WRITE(6,*)' ERREUR DANS LA STRUCTURE DES BLOCS IF THEN ELSE ENDIF WHILE ENDWHILE'
          KERR = NERR + 1
          KEND = -1
       ENDIF 
