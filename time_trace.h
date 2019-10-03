@@ -17,7 +17,7 @@
 #if defined SELF_TEST
 #define MAX_TIMES  7
 #else
-#define MAX_TIMES 1024
+#define MAX_TIMES 4096
 #endif
 
 #if defined(FORTRAN_SOURCE)

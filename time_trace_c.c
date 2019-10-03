@@ -244,11 +244,12 @@ void TimeTraceDumpText(time_context t, char *filename, int ordinal){  // dump in
       i++;
       if(j >= nval) break;
     }
-    if(tag == -1) { 
+    if(tag == -1) {                                          // step 
       tm8 = (tm[0] << 32) | tm[1] ;
       fprintf(fd,"%d %d %llu %d",cstep, tag, tm8, 0);
-    }else{
+    }else{                                                   // tag with or without barrier
       fprintf(fd,"%d %d ",cstep, tag);
+      if(nval == 1) { nval = 2 ; tm[1] = 0 ; }
       for(j=0 ; j<nval ; j++) fprintf(fd,"%llu ",tm[j]);
     }
     fprintf(fd,"\n");
