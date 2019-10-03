@@ -125,11 +125,6 @@ end module
 !ARGUMENTS
 ! IN      N     NUMERO D'ORDRE DE L'ARGUMENT DANS LA LISTE
 !
-!IMPLICITES
-!       COMMON /PARMADR/NPRM,NARG,DOPE(41),PARM(101)
-!       COMMON /PARMADR/NDOPES,DOPEA(42),DOPES(101),ADR(41)
-!       INTEGER NARG,NPRM,DOPE,NDOPE,DOPEA,DOPES,PARM
-!       Integer*8 ADR
 !*
       IF((N .LE. NARG))THEN
          ARGDIMS = DOPE(N)
@@ -153,13 +148,6 @@ end module
 !
 !AUTEUR
 !     M. VALIN
-!
-!IMPLICITE
-!
-!       COMMON /PARMADR/NPRM,NARG,DOPE(41),PARM(101)
-!       COMMON /PARMADR/NDOPES,DOPEA(42),DOPES(101),ADR(41)
-!       INTEGER NARG,NPRM,DOPE,NDOPE,DOPEA,DOPES,PARM
-!       Integer*8 ADR
 !
 !*
       INTEGER I,BASE
@@ -279,23 +267,6 @@ end module
 ! E      LIMIT   NOMBRE MAXIMAL DE MOTS QUE VAL PEUT ACCUEILLIR
 ! S      ERR     INDICATEUR D'ERREUR
 !
-!IMPLICITES
-
-!       COMMON/QLXTOK1/LEN,TYPE,ZVAL,INEXPR
-!       LOGICAL INEXPR
-!       INTEGER LEN,TYPE,JVAL
-!       REAL ZVAL
-!       EQUIVALENCE (ZVAL,JVAL)
-! !
-! 
-!       COMMON/QLXTOK2/TOKEN
-!       CHARACTER(len=80) :: TOKEN
-! !
-! 
-!       CHARACTER(len=20) :: LINEFMT
-!       INTEGER KARMOT
-!       COMMON /QLXFMT/ LINEFMT
-!       COMMON /QLXFMT2/ KARMOT
 !*
       INTEGER IND,JLEN,QLXVAL
       INTEGER OLDTYP,ITEMP(80),IREPCN
@@ -424,14 +395,6 @@ end module
 !ARGUMENT
 !        ICAR      CARACTERE(1 CARACTERE HOLLERITH) RENVOYE DANS LA LIGNE DE TEX
 !         E
-!
-! 
-!       COMMON /QLXBUFF/ NC,LAST,INPFILE,EOFL,NERR,SKIPFLG
-!       COMMON /QLXBUFF/ CURREC,READREC,TMPFILE
-!       INTEGER NC,LAST,INPFILE,NERR,SKIPFLG,CURREC,READREC,TMPFILE
-!       LOGICAL EOFL
-!       COMMON /QLXBUF2/ INLINE
-!       CHARACTER(len=101) :: INLINE
 !*
       IF((NC.GT.1))THEN
          INLINE(NC-1:NC-1)=ICAR
@@ -442,52 +405,24 @@ end module
       RETURN
       END
 !
-      SUBROUTINE QLXCALL(SUB,ICOUNT,LIMITS,ERR)   ! process a call directive NAME(parm,parm,....,parm)
+      SUBROUTINE QLXCALL(SUB,ICOUNT,LIMITS,ERR)   ! process a call directive NAME(parm,parm,....,parm) (including expresions now)
       use readlx_internals, only : DOPE, DOPEA, ADR, DOPES, NDOPES, MAX_ARGL, JVAL, LEN, &
                                    KARMOT, PARM, TOKEN, TYPE, LINEFMT, NARG, NPRM, TOK_NIT
       implicit none
-      Integer(kind=8) :: SUB        ! address of subroutine to call
-      Integer(kind=8) :: ICOUNT     ! number of arguments
-      integer, intent(IN) :: limits ! min and max acceptable number of arguments (maxargs + 100 * minargs)
-      logical, intent(OUT) :: ERR
+      Integer(kind=8), intent(IN) :: SUB        ! address of subroutine to call
+      Integer(kind=8), intent(IN) :: ICOUNT     ! number of arguments
+      integer, intent(IN)         :: limits     ! min and max acceptable number of arguments (maxargs + 100 * minargs)
+      logical, intent(OUT)        :: ERR
 !
       Integer(kind=8), external :: get_address_from
-
-!       COMMON/QLXTOK1/LEN,TYPE,ZVAL,INEXPR
-!       LOGICAL INEXPR
-!       INTEGER LEN,TYPE,JVAL
-!       REAL ZVAL
-!       EQUIVALENCE (ZVAL,JVAL)
-! !
-! 
-!       COMMON/QLXTOK2/TOKEN
-!       CHARACTER *80 TOKEN
-!
-!
-
-!       COMMON /PARMADR/NPRM,NARG,DOPE(41),PARM(101)
-!       COMMON /PARMADR/NDOPES,DOPEA(42),DOPES(101),ADR(41)
-!       INTEGER NARG,NPRM,DOPE,NDOPE,DOPEA,DOPES,PARM
-!       Integer*8 ADR
-!       CHARACTER * 20 LINEFMT
-!       INTEGER KARMOT
-!       COMMON /QLXFMT/ LINEFMT
-!       COMMON /QLXFMT2/ KARMOT
-!
-
-      EXTERNAL RMTCALL, QLXADR, QLXVAL  !, QLXSKP
+      EXTERNAL RMTCALL, QLXADR, QLXVAL
       INTEGER  RMTCALL, QLXVAL
       INTEGER LIM1,LIM2,JLEN,PREVI
       Integer(kind=8) :: LOCDUM, QLXADR
       CHARACTER(len=8) :: KLE
       integer :: i, j, JUNK, NPRM0
       logical :: expression_allowed
-!       character(len=1) :: nextchar, QLXSKP
-!
       LOGICAL FIN,INLIST
-!
-!       DATA ADR  /41*0/
-!       DATA PARM /101*0/
 !
       FIN  = .FALSE.
       INLIST = .FALSE.
@@ -514,14 +449,12 @@ end module
         CALL QLXTOK
 
         IF( (PREVI .EQ.4))THEN       ! previous token was an operator "(" , "[", "}", ","
-            ! may want to check here for an expression (.....) if previous was '(' , or ',' , or '['  (expression_allowed == .true.)
-            ! if(expression_allowed) if(next token is '(' ) process expression just like in QLXASG
-            ! we "disguise" expression result as type = 1, result is in JVAL
-            if(expression_allowed) then
-              if(token(1:1) == '(' .and. TYPE .EQ.4) then
+            ! check for a possible expression (.....) if  expression_allowed is .true.
+            if(expression_allowed) then                    ! may process expression just like in QLXASG
+              if(token(1:1) == '(' .and. TYPE .EQ.4) then  ! previous token was '(' , or ',' , or '[' , current is '('
                 call QLXXPR(ERR)
                 if(err) goto 23004
-                if(TYPE.EQ.8) TYPE = 1
+                if(TYPE.EQ.8) TYPE = 1            ! "disguise" expression result as type = 1, result is in JVAL
               endif
             endif
             expression_allowed = .false.
@@ -532,7 +465,7 @@ end module
                   NPRM = MIN(NPRM+1,(MAX_ARGL+1))
                   PARM(NPRM) = QLXVAL(KLE,ERR) ! get value, store in list
                   DOPE(NARG) = DOPE(NARG) + 1  ! bump argument dimension count
-                ELSE                            ! not in list, solo value
+                ELSE                           ! not in list, solo value
                   NARG = MIN(NARG+1,41)        ! bump argument count
                   ADR(NARG) = QLXADR(KLE,ERR)  ! get addresss associated to SYMBOL
                   DOPEA(NARG) = NDOPES + 1     ! bump dopes position
@@ -567,7 +500,6 @@ end module
                   NPRM0 = NPRM
                 ENDIF 
                 READ(TOKEN,LINEFMT) (PARM(J+NPRM),J=1,JLEN)   ! stuff into PARM (jlen items)
-                ! 101                  FORMAT(25 A04)
                 NDOPES = MIN(NDOPES+1,(MAX_ARGL+1))
                 DOPES(NDOPES) = TYPE + LEN * 256 + (NPRM-NPRM0+1)*256 *256
                 NPRM = MIN(NPRM+JLEN,(MAX_ARGL+1))
@@ -646,22 +578,10 @@ end module
 !        QLXCHR    CARACTERE RENVOYE(1 CARACTERE HOLLERITH)
 !      S
 !
-
-!       COMMON /QLXBUFF/ NC,LAST,INPFILE,EOFL,NERR,SKIPFLG
-!       COMMON /QLXBUFF/ CURREC,READREC,TMPFILE
-!       INTEGER NC,LAST,INPFILE,NERR,SKIPFLG,CURREC,READREC,TMPFILE
-!       LOGICAL EOFL
-!       COMMON /QLXBUF2/ INLINE
-!       CHARACTER *101 INLINE
-!
       CHARACTER(len=8), dimension(0:3), save :: SKIPMSG
       LOGICAL COMMENT
       INTEGER PRTFLAG
       DATA SKIPMSG/'<<    >>','<<SKIP>>','<<SKIP>>','<< ** >>'/
-!       DATA NC,LAST/1,0/
-!       DATA INPFILE/5/
-!       DATA EOFL/.FALSE./
-!       DATA INLINE/' '/
 !
       IF((NC.LE.LAST))THEN    ! data available in line buffer ?
          QLXCHR=INLINE(NC:NC) ! return current character
@@ -728,19 +648,13 @@ end module
       SUBROUTINE QLXDBG ! print line buffer and some associated information
       use readlx_internals, only : INPFILE, NC, LAST, INLINE, INLB
       implicit none
-!       COMMON /QLXBUFF/ NC,LAST,INPFILE,EOFL,NERR,SKIPFLG
-!       COMMON /QLXBUFF/ CURREC,READREC,TMPFILE
-!       INTEGER NC,LAST,INPFILE,NERR,SKIPFLG,CURREC,READREC,TMPFILE
-!       LOGICAL EOFL
-!       COMMON /QLXBUF2/ INLINE
-!       CHARACTER *101 INLINE
+
       WRITE(6,*) 'NC=',NC,'LAST=',LAST,'INPFILE=',INPFILE
-!       WRITE(6,'(1X,A101)')INLINE(1:INLB)
       WRITE(6,*)INLINE(1:INLB)
       RETURN
       END
 !
-!**FUNCTION QLXDTYP  TYPE OF A NUMERICAL DATA ITEM  (TO BE REVISITED BECAUSE NEXT TO POINTLESS)
+!**FUNCTION QLXDTYP  TYPE OF A NUMERICAL DATA ITEM  (NO LONGER USED)
 !       FUNCTION QLXDTYP(ITEM)   ! ONLY USED BY QLXADI
 !       use readlx_internals, only : MAX_ABS_INT
 !       implicit none
@@ -773,15 +687,7 @@ end module
 !        CODE
 !        MODULE    DE TYPE CARACTERE. DESIGNE LE MODULE DANS LEQUEL L'ERREUR  ES
 !
-
-!       COMMON /QLXBUFF/ NC,LAST,INPFILE,EOFL,NERR,SKIPFLG
-!       COMMON /QLXBUFF/ CURREC,READREC,TMPFILE
-!       INTEGER NC,LAST,INPFILE,NERR,SKIPFLG,CURREC,READREC,TMPFILE
-!       LOGICAL EOFL
-!       COMMON /QLXBUF2/ INLINE
-!       CHARACTER *101 INLINE
 !*
-
       INTEGER :: DESTI, MT, ME, I
       CHARACTER(len=80) :: ERMSG
       CHARACTER(len=7), dimension(9) :: typ
@@ -960,16 +866,6 @@ end module
 !
       INTEGER, intent(OUT) :: IND  ! index value
       LOGICAL, intent(OUT) :: ERR  ! error flag (set to true if an error is detected)
-!       COMMON/QLXTOK1/LEN,TYPE,ZVAL,INEXPR
-!       LOGICAL INEXPR
-!       INTEGER LEN,TYPE,JVAL
-!       REAL ZVAL
-!       EQUIVALENCE (ZVAL,JVAL)
-! !
-! 
-!       COMMON/QLXTOK2/TOKEN
-!       CHARACTER *80 TOKEN
-!
 !*
       EXTERNAL QLXSKP
       CHARACTER(len=1) :: QLXSKP
@@ -1060,24 +956,9 @@ end module
 !        LE NOMBRE MAXIMUM DE VALEURS,ET LE TYPE DE SYMBOLES.
 !
 !*
-!
-!     TABLES STATIQUES CONTENANT LES CLES, LEURS ADRESSES, ET LES LIMITES
-!
       CHARACTER(len=8) :: IKEY
       integer :: IPNT
       integer, external :: get_address_from
-
-!       INTEGER ITAB(3:3,256),NENTRY
-!       Integer(kind=8), dimension(2,256) :: IPTADR
-! 
-!       CHARACTER *8 NAMES(256)
-!       COMMON /qqq_nrdlx/ NAMES, ITAB, NENTRY
-!       COMMON /qqq_nrdlx2/ IPTADR
-!       
-!       DATA ITAB /256 * 0/
-!       DATA IPTADR /256 * 0,256 * 0/
-!       DATA NAMES /256 * ' '/
-!       DATA NENTRY /0/
 !
 !     TROUVER LA CLE
 !
@@ -1122,11 +1003,6 @@ end module
       Integer(kind=8), intent(OUT) :: icount  ! count
       INTEGER, intent(OUT) :: LIMITS          ! limits for number of values/arguments (max + 100 * min)
       INTEGER, intent(OUT) :: ITYP            ! symbol type
-!       INTEGER ITAB(3:3,256),NENTRY
-!       Integer*8 IPTADR(2,256)
-!       CHARACTER *8 NAMES(256)
-!       COMMON /qqq_nrdlx/ NAMES, ITAB, NENTRY
-!       COMMON /qqq_nrdlx2/ IPTADR
       character(len=8) :: ikey
       integer :: IPNT
 !
@@ -1360,8 +1236,6 @@ end module
       INTEGER NTOKEN,OPRTR,TOKTYPE(NTOKEN), itok
       INTEGER(kind=8) :: TOKENS(NTOKEN)
       LOGICAL ERR
-!      EXTERNAL QLXMAD
-!      INTEGER  QLXMAD
       Integer*8 get_address_from
       EXTERNAL get_address_from
 
@@ -1606,13 +1480,6 @@ end module
       CHARACTER(len=*) OPTION
       INTEGER VAL
 !
-
-!       CHARACTER * 20 LINEFMT
-!       INTEGER KARMOT
-!       COMMON /QLXFMT/ LINEFMT
-!       COMMON /QLXFMT2/ KARMOT
-!
-
       IF( (OPTION(1:6).EQ. 'CARMOT'))THEN
          KARMOT = VAL
          WRITE(LINEFMT,'(A,I2,A)') '(25 A',KARMOT,')'
@@ -1683,10 +1550,7 @@ end module
       CHARACTER(len=120) :: FMT
       INTEGER, external :: ARGDIMS
       integer :: I, L1, L2
-!       CHARACTER * 20 LINEFMT
-!       INTEGER KARMOT
-!       COMMON /QLXFMT/ LINEFMT
-!       COMMON /QLXFMT2/ KARMOT
+
       L1 = ARGDIMS(1)
       L2 = MIN(120/KARMOT,ARGDIMS(2))
 ! print *,'entering QLXPRNT, l1, l2 =',L1, L2
@@ -1833,23 +1697,7 @@ end module
 !
 
       INTEGER ISGN,ITYP
-!       COMMON/QLXTOK1/LEN,TYPE,ZVAL,INEXPR
-!       LOGICAL INEXPR
-!       INTEGER LEN,TYPE,JVAL
-!       REAL ZVAL
-!       EQUIVALENCE (ZVAL,JVAL)
-! !
-! 
-!       COMMON/QLXTOK2/TOKEN
-!       CHARACTER *80 TOKEN
-! !
-! 
-!       CHARACTER * 20 LINEFMT
-!       INTEGER KARMOT
-!       COMMON /QLXFMT/ LINEFMT
-!       COMMON /QLXFMT2/ KARMOT
 !*
-
       Integer(kind=8) :: LOCVAR,LOCCNT
       EXTERNAL QLXCHR, QLXNUM
       CHARACTER(len=1) :: IC, QLXCHR
@@ -1985,12 +1833,7 @@ end module
       INTEGER, external :: ARGDIMS
       integer :: I
       integer(kind=8) :: SCRAP
-!       CHARACTER * 20 LINEFMT
-!       INTEGER KARMOT
-!       COMMON /QLXFMT/ LINEFMT
-!       COMMON /QLXFMT2/ KARMOT
 !
-!      WRITE(CKEY,LINFMT)(IKEY(I),I=1,ARGDIMS(1))
       WRITE(CKEY,101)(IKEY(I),I=1,ARGDIMS(1))
 101   FORMAT(2 A04)
       CALL QLXUDF(SCRAP,CKEY)
@@ -2022,15 +1865,6 @@ end module
       use readlx_internals, only : TOKEN, TYPE, JVAL, INEXPR, MAX_ABS_INT
       implicit none
       LOGICAL, intent(OUT) :: ERR
-!       COMMON/QLXTOK1/LEN,TYPE,ZVAL,INEXPR
-!       LOGICAL INEXPR
-!       INTEGER LEN,TYPE,JVAL
-!       REAL ZVAL
-!       EQUIVALENCE (ZVAL,JVAL)
-! !
-! 
-!       COMMON/QLXTOK2/TOKEN
-!       CHARACTER *80 TOKEN
 !
       integer, PARAMETER :: MAXTKNS=65, MAXOPS=30
       INTEGER TOKTYPE(MAXTKNS), NTOKEN
@@ -2177,26 +2011,6 @@ end module
 !
 !         - KERR -
 !
-
-!       COMMON/QLXTOK1/LEN,TYPE,ZVAL,INEXPR
-!       LOGICAL INEXPR
-!       INTEGER LEN,TYPE,JVAL
-!       REAL ZVAL
-!       EQUIVALENCE (ZVAL,JVAL)
-!
-!       COMMON/QLXTOK2/TOKEN
-!       CHARACTER *80 TOKEN
-!
-!       COMMON /QLXBUFF/ NC,LAST,INPFILE,EOFL,NERR,SKIPFLG
-!       COMMON /QLXBUFF/ CURREC,READREC,TMPFILE
-!       INTEGER NC,LAST,INPFILE,NERR,SKIPFLG,CURREC,READREC,TMPFILE
-!       LOGICAL EOFL
-!       COMMON /QLXBUF2/ INLINE
-!       CHARACTER *101 INLINE
-!       CHARACTER * 20 LINEFMT
-!       INTEGER KARMOT
-!       COMMON /QLXFMT/ LINEFMT
-!       COMMON /QLXFMT2/ KARMOT
 !*
       integer, external :: fnom
       INTEGER :: UNIT, KEND
