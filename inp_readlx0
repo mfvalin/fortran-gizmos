@@ -1,0 +1,29 @@
+ DEFINE(I,2)
+ TAB1 = 1, 2, 3, 4, 5
+ TAB2 = 4%11
+ TAB3 = 7%22
+ DIAG()
+ TAB1 = 10, 20, 30, 40, 50, 60
+ TAB2 = ,2%33
+ TAB3 = ,,,3%44
+ DIAG()
+ I = 1
+ WHILE(I < 3)
+  i = ,( 10 * i )
+  print( [ i , i[2] ],'(10X,2I10)')
+  if(TAB1[I] == 10*i)
+    TAB1 = , , , 400
+    DIAG()
+  else
+    TAB1 = , , , 444
+    DIAG()
+  endif
+  i = (i+1)
+ endwhile
+ TAB1 = 1, 2
+ SUB1(TAB1,['abcdefghijkl','01234567'])
+ 
+ print( [(1+2),(2+3),(3+4)],'(10X,10I10)')
+ print((1+2 6),'(10X,10I10)')
+ print( ( 1 + 2 ),'(10X,10I10)')
+ 
