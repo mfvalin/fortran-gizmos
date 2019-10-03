@@ -23,6 +23,7 @@
 ! TODO:
 ! QLXDTYP:  TO BE REVISITED, POINTLESS THE WAY IT IS BEING USED
 !
+#define WITH_EXPRESSIONS
 module readlx_internals
   implicit none
 !   COMMON /PARMADR/NPRM,NARG,DOPE(41),PARM(101)
@@ -112,7 +113,7 @@ end module
 !**FONCTION ARGDIMS LONGUEUR D'ARGUMENTS (APPEL VIA READLX)
 !
       INTEGER FUNCTION ARGDIMS(N)  ! return length of argument N
-      use readlx_internals
+      use readlx_internals, only : DOPE, NARG
       implicit none
       INTEGER, intent(IN) :: N
 !
@@ -140,7 +141,7 @@ end module
 !**FONCTION ARGDOPE - GET DOPE LIST OF ARGUMENT NARG
 !
       INTEGER FUNCTION ARGDOPE(N,LISTE,ND)   ! return number of items in argument N
-      use readlx_internals
+      use readlx_internals, only : DOPEA, DOPES, NARG
       implicit none
       INTEGER, intent(IN)  :: N,ND
       INTEGER, intent(OUT) :: LISTE(ND)      ! argument array returned to caller
@@ -177,7 +178,6 @@ end module
 !**S/P LEXINS  -  INTERFACE DE QLXINS
 !
       SUBROUTINE LEXINS(IVAR,ICLE,NB,LIMIT,TYP)  ! legacy support of an old routine
-      implicit none
       INTEGER IVAR,ICLE,NB,LIMIT,TYP
 !
 !AUTEUR M. LEPINE  -  OCT 89
@@ -261,7 +261,7 @@ end module
 !
 !**S/P QLXASG ASSIGNATION D'UNE OU PLUSIEURS VALEURS
       SUBROUTINE QLXASG(VAL,ICOUNT,LIMIT,ERR)   ! process assignment statement
-      use readlx_internals
+      use readlx_internals, only : JVAL, ZVAL, LEN, TYPE, TOKEN, LINEFMT, KARMOT
       implicit none
       integer(kind=8), intent(IN) :: VAL           ! assignment target MEMORY ADDRESS
       INTEGER, intent(OUT)        :: ICOUNT        ! number of values stored
@@ -407,7 +407,7 @@ end module
 !
 !**S/P QLXBAK     RENVOYER UN CARACTERE
       SUBROUTINE QLXBAK(ICAR)  ! push one character back into input buffer
-      use readlx_internals
+      use readlx_internals, only : INLINE, NC
       implicit none
       CHARACTER(len=1), intent(IN) :: ICAR
 !
@@ -440,7 +440,8 @@ end module
       END
 !
       SUBROUTINE QLXCALL(SUB,ICOUNT,LIMITS,ERR)   ! process a call directive NAME(parm,parm,....,parm)
-      use readlx_internals
+      use readlx_internals, only : DOPE, DOPEA, ADR, DOPES, NDOPES, MAX_ARGL, JVAL, LEN, &
+                                   KARMOT, PARM, TOKEN, TYPE, LINEFMT, NARG, NPRM, TOK_NIT
       implicit none
       Integer(kind=8) :: SUB        ! address of subroutine to call
       Integer(kind=8) :: ICOUNT     ! number of arguments
@@ -603,7 +604,8 @@ end module
 !
 !**FONCTION QLXCHR     RETOURNE UN CARACTERE A LA FOIS D'UNE LIGNE
       CHARACTER(len=1) FUNCTION QLXCHR()  ! get next character from current input stream
-      use readlx_internals
+      use readlx_internals, only : NC, INLINE, LAST, EOFL, READREC, CURREC, INPFILE, FMT1, &
+                                   INLB, TMPFILE, SKIPFLG, FMT2
       implicit none
 !
 !
@@ -696,7 +698,7 @@ end module
       END
 !
       SUBROUTINE QLXDBG ! print line buffer and some associated information
-      use readlx_internals
+      use readlx_internals, only : INPFILE, NC, LAST, INLINE, INLB
       implicit none
 !       COMMON /QLXBUFF/ NC,LAST,INPFILE,EOFL,NERR,SKIPFLG
 !       COMMON /QLXBUFF/ CURREC,READREC,TMPFILE
@@ -726,7 +728,7 @@ end module
 !
 !**S/P QLXERR     IMPRIME DES MESSAGES D'ERREUR
       SUBROUTINE QLXERR(CODE,MODUL)
-      use readlx_internals
+      use readlx_internals, only : NC, NERR
       implicit none
       INTEGER CODE
       CHARACTER(len=*) :: MODUL
@@ -751,7 +753,7 @@ end module
 !       CHARACTER *101 INLINE
 !*
 
-      INTEGER DESTI,MT,ME,I
+      INTEGER :: DESTI, MT, ME, I
       CHARACTER(len=80) :: ERMSG
       CHARACTER(len=7), dimension(9) :: typ
       CHARACTER(len=40), dimension(50) :: MSG
@@ -829,7 +831,6 @@ end module
       END
 !
       SUBROUTINE QLXFND(KEY,LOCVAR,LOCCNT,LIMITS,ITYP) ! symbol table lookup
-      use readlx_internals
       implicit none
       CHARACTER(len=*), intent(IN) :: KEY   ! symbol to look for
       Integer(kind=8) :: LOCVAR             ! address associated to symbol (0 if not applicable)
@@ -924,7 +925,7 @@ end module
       END
 !
       SUBROUTINE QLXIND(IND,ERR)  ! look for possible index, if none found, return 1
-      use readlx_internals
+      use readlx_internals, only : TYPE, JVAL, TOKEN
       implicit none
 !
       INTEGER, intent(OUT) :: IND  ! index value
@@ -1017,7 +1018,7 @@ end module
 !**S/P QQLXINS DECLARATION DES CLES ET DE LEUR TYPE
 !
       SUBROUTINE QQLXINS(IVAR,KEY,ICOUNT,LIMITS,ITYP,XTERN)  ! install symbol in tables
-      use readlx_internals
+      use readlx_internals, only : NENTRY, NAMES, ITAB, IPTADR
       implicit none
       Integer IVAR,ICOUNT
       EXTERNAL XTERN
@@ -1084,7 +1085,7 @@ end module
       END
 !
       SUBROUTINE QLXLOOK(IVAR,KEY,ICOUNT,LIMITS,ITYP)  ! lookup routine for user defined symbols
-      use readlx_internals
+      use readlx_internals, only : IPTADR, NAMES, ITAB, NENTRY
       implicit none
       Integer(kind=8), intent(OUT) :: ivar    ! address
       CHARACTER(len=*), intent(IN) :: KEY     ! symbol
@@ -1125,7 +1126,7 @@ end module
       END
 !
       subroutine QLXUDF(IVAR,KEY)  ! undefine a key (symbol)
-      use readlx_internals
+      use readlx_internals, only : ITAB, NENTRY, NAMES, IPTADR
       implicit none
       Integer(kind=8), intent(IN) :: ivar    ! address
       CHARACTER(len=*), intent(IN) :: KEY     ! symbol
@@ -1154,7 +1155,7 @@ end module
       END
 !
       subroutine QLXDTB      ! DUMP symbol table
-      use readlx_internals
+      use readlx_internals, only : ITAB, NENTRY, NAMES, IPTADR
       implicit none
       integer :: I
       PRINT *,' NAMES, LOCVAR, TYPE/LIMITS, LOCCOUNT'
@@ -1285,7 +1286,7 @@ end module
       SUBROUTINE QLXNVAR(KEY,NW)  ! define a new symbol/array 
 !  TODO: extend to acccept lists for arguments 1 and 2
 !  make created items dynamic with auto allocation
-      use readlx_internals
+      use readlx_internals, only : LINEFMT
       implicit none
       INTEGER NW
 
@@ -1568,7 +1569,7 @@ end module
 !**S/P QLXOPT  -  PASSAGE D'OPTIONS A READLX
 !
       SUBROUTINE QLXOPT(OPTION,VAL)  ! only one option recognized : CARMOT , number of chars in a "word" (integer)
-      use readlx_internals
+      use readlx_internals, only : LINEFMT, KARMOT
       implicit none
       CHARACTER(len=*) OPTION
       INTEGER VAL
@@ -1644,7 +1645,7 @@ end module
       end
 #endif
       SUBROUTINE QLXPRNT(QUOI,COMMENT)
-      use readlx_internals
+      use readlx_internals, only : KARMOT, LINEFMT
       implicit none
       INTEGER QUOI(*), COMMENT(*)
       CHARACTER(len=120) :: FMT
@@ -1776,7 +1777,7 @@ end module
 !
 !**S/P QLXTOK
       SUBROUTINE QLXTOK  ! get next token, if key or numeric item, JVAL contains numerical value when subroutine returns
-      use readlx_internals
+      use readlx_internals, only : TOKEN, JVAL, ZVAL, INEXPR, TOK_ADR, TOK_CNT, TOK_LIM, TOK_NIT, KARMOT, LEN, TYPE
       implicit none
 !
 !
@@ -1946,7 +1947,6 @@ end module
       END
 !
       SUBROUTINE QLXUNDF(IKEY)   ! undefine a symbol
-      use readlx_internals
       implicit none
       INTEGER IKEY(*)
       CHARACTER *8 CKEY
@@ -1987,7 +1987,7 @@ end module
 #if defined(WITH_EXPRESSIONS)
 !**S/P QLXXPR TRAITER UNE EXPRESSION ARITHMETIQUE OU LOGIQUE
       SUBROUTINE QLXXPR(ERR)  ! process expression, store value into JVAL  THIS CODE IS BROKEN ON 64 BIT MACHINES
-      use readlx_internals
+      use readlx_internals, only : TOKEN, TYPE, JVAL, INEXPR
       implicit none
       LOGICAL, intent(OUT) :: ERR
 !       COMMON/QLXTOK1/LEN,TYPE,ZVAL,INEXPR
@@ -2124,7 +2124,8 @@ end module
       END
 #endif
       SUBROUTINE READLX(UNIT,KEND,KERR)
-      use readlx_internals
+      use readlx_internals, only : NERR, INEXPR, SKIPFLG, INLB, CURREC, READREC, TOKEN, TYPE, &
+                                   LINEFMT, KARMOT, NC, LAST, EOFL, TMPFILE, JVAL, INPFILE
       implicit none
 !
 !**S/R READLX - INTERPRETE DE DIRECTIVES
