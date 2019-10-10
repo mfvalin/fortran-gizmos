@@ -50,4 +50,5 @@ trace_test_c: time_trace_c.c time_trace.h
 	$(CC) $(CFLAGS) -I. -DSELF_TEST -DC_SELF_TEST time_trace_c.c -o trace_test_c
 
 clean:	
-	rm -f *.o *.mod a.out f_python f_tclsh f_wish f_demo *~ libompstubs.a time_list_0*.txt time_list_0*.dat trace_test_c trace_test_f
+	rm -f *.o *.mod a.out f_python f_tclsh f_wish f_demo *~  *.s
+	rm -f libompstubs.a time_list_0*.txt time_list_0*.dat trace_test_c trace_test_f
