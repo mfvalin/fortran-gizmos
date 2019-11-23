@@ -2,118 +2,118 @@ subroutine poly(cp)
   use ISO_C_BINDING
   implicit none
   interface mptr
-    function pr41d(pi,po,di) result(p)
+    subroutine pr41d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      real, dimension(:), intent(IN), pointer :: po
+      real, dimension(:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      real, dimension(:), pointer :: p
-    end function pr41d
-    function pr42d(pi,po,di) result(p)
+!       real, dimension(:), pointer :: p
+    end subroutine pr41d
+    subroutine pr42d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      real, dimension(:,:), intent(IN), pointer :: po
+      real, dimension(:,:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      real, dimension(:,:), pointer :: p
-    end function pr42d
-    function pr43d(pi,po,di) result(p)
+!       real, dimension(:,:), pointer :: p
+    end subroutine pr42d
+    subroutine pr43d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      real, dimension(:,:,:), intent(IN), pointer :: po
+      real, dimension(:,:,:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      real, dimension(:,:,:), pointer :: p
-    end function pr43d
-    function pr44d(pi,po,di) result(p)
+!       real, dimension(:,:,:), pointer :: p
+    end subroutine pr43d
+    subroutine pr44d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      real, dimension(:,:,:,:), intent(IN), pointer :: po
+      real, dimension(:,:,:,:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      real, dimension(:,:,:,:), pointer :: p
-    end function pr44d
-    function pr81d(pi,po,di) result(p)
+!       real, dimension(:,:,:,:), pointer :: p
+    end subroutine pr44d
+    subroutine pr81d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      real(kind=8), dimension(:), intent(IN), pointer :: po
+      real(kind=8), dimension(:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      real(kind=8), dimension(:), pointer :: p
-    end function pr81d
-    function pr82d(pi,po,di) result(p)
+!       real(kind=8), dimension(:), pointer :: p
+    end subroutine pr81d
+    subroutine pr82d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      real(kind=8), dimension(:,:), intent(IN), pointer :: po
+      real(kind=8), dimension(:,:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      real(kind=8), dimension(:,:), pointer :: p
-    end function pr82d
-    function pr83d(pi,po,di) result(p)
+!       real(kind=8), dimension(:,:), pointer :: p
+    end subroutine pr82d
+    subroutine pr83d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      real(kind=8), dimension(:,:,:), intent(IN), pointer :: po
+      real(kind=8), dimension(:,:,:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      real(kind=8), dimension(:,:,:), pointer :: p
-    end function pr83d
-    function pr84d(pi,po,di) result(p)
+!       real(kind=8), dimension(:,:,:), pointer :: p
+    end subroutine pr83d
+    subroutine pr84d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      real(kind=8), dimension(:,:,:,:), intent(IN), pointer :: po
+      real(kind=8), dimension(:,:,:,:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      real(kind=8), dimension(:,:,:,:), pointer :: p
-    end function pr84d
-    function pi41d(pi,po,di) result(p)
+!       real(kind=8), dimension(:,:,:,:), pointer :: p
+    end subroutine pr84d
+    subroutine pi41d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      integer, dimension(:), intent(IN), pointer :: po
+      integer, dimension(:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      integer, dimension(:), pointer :: p
-    end function pi41d
-    function pi42d(pi,po,di) result(p)
+!       integer, dimension(:), pointer :: p
+    end subroutine pi41d
+    subroutine pi42d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      integer, dimension(:,:), intent(IN), pointer :: po
+      integer, dimension(:,:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      integer, dimension(:,:), pointer :: p
-    end function pi42d
-    function pi43d(pi,po,di) result(p)
+!       integer, dimension(:,:), pointer :: p
+    end subroutine pi42d
+    subroutine pi43d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      integer, dimension(:,:,:), intent(IN), pointer :: po
+      integer, dimension(:,:,:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      integer, dimension(:,:,:), pointer :: p
-    end function pi43d
-    function pi44d(pi,po,di) result(p)
+!       integer, dimension(:,:,:), pointer :: p
+    end subroutine pi43d
+    subroutine pi44d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      integer, dimension(:,:,:,:), intent(IN), pointer :: po
+      integer, dimension(:,:,:,:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      integer, dimension(:,:,:,:), pointer :: p
-    end function pi44d
-    function pi81d(pi,po,di) result(p)
+!       integer, dimension(:,:,:,:), pointer :: p
+    end subroutine pi44d
+    subroutine pi81d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      integer(kind=8), dimension(:), intent(IN), pointer :: po
+      integer(kind=8), dimension(:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      integer(kind=8), dimension(:), pointer :: p
-    end function pi81d
-    function pi82d(pi,po,di) result(p)
+!       integer(kind=8), dimension(:), pointer :: p
+    end subroutine pi81d
+    subroutine pi82d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      integer(kind=8), dimension(:,:), intent(IN), pointer :: po
+      integer(kind=8), dimension(:,:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      integer(kind=8), dimension(:,:), pointer :: p
-    end function pi82d
-    function pi83d(pi,po,di) result(p)
+!       integer(kind=8), dimension(:,:), pointer :: p
+    end subroutine pi82d
+    subroutine pi83d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      integer(kind=8), dimension(:,:,:), intent(IN), pointer :: po
+      integer(kind=8), dimension(:,:,:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      integer(kind=8), dimension(:,:,:), pointer :: p
-    end function pi83d
-    function pi84d(pi,po,di) result(p)
+!       integer(kind=8), dimension(:,:,:), pointer :: p
+    end subroutine pi83d
+    subroutine pi84d(pi,p,di)
       import :: C_PTR
       type(C_PTR), intent(IN) :: pi
-      integer(kind=8), dimension(:,:,:,:), intent(IN), pointer :: po
+      integer(kind=8), dimension(:,:,:,:), intent(OUT), pointer :: p
       integer, dimension(:), intent(IN) :: di
-      integer(kind=8), dimension(:,:,:,:), pointer :: p
-    end function pi84d
+!       integer(kind=8), dimension(:,:,:,:), pointer :: p
+    end subroutine pi84d
   end interface
   type(C_PTR), intent(IN) :: cp
   integer, dimension(:), pointer       :: i41
@@ -133,163 +133,312 @@ subroutine poly(cp)
   real(kind=8), dimension(:,:,:), pointer   :: r83
   real(kind=8), dimension(:,:,:,:), pointer :: r84
 
-  i41 => mptr(cp, i41, [-1, 2])
-  print *,'i41',size(i41),lbound(i41,1),ubound(i41,1)
-  i42 => mptr(cp, i42, [-1, 2, -2, 1])
-  print *,'i42',size(i42),lbound(i42,1),ubound(i42,1),lbound(i42,2),ubound(i42,2)
-!   i43 => mptr(cp, i43, [-1, 2, -2, 1, 1, 2])
-!   i44 => mptr(cp, i44, [-1, 2, -2, 1, 1, 2, 1, 2])
-!   i81 => mptr(cp, i81, [-1, 2])
-!   i82 => mptr(cp, i82, [-1, 2, -2, 1])
-!   i83 => mptr(cp, i83, [-1, 2, -2, 1, 1, 2])
-!   i84 => mptr(cp, i84, [-1, 2, -2, 1, 1, 2, 1, 2])
-  r41 => mptr(cp, r41, [-1, 2])
-  print *,'r41',size(r41),lbound(r41,1),ubound(r41,1)
-  r42 => mptr(cp, r42, [-1, 2, -2, 1])
-  print *,'r42',size(r42),lbound(r42,1),ubound(r42,1),lbound(r42,2),ubound(r42,2)
-!   r43 => mptr(cp, r43, [-1, 2, -2, 1, 1, 2])
-!   r44 => mptr(cp, r44, [-1, 2, -2, 1, 1, 2, 1, 2])
-!   r81 => mptr(cp, r81, [-1, 2])
-!   r82 => mptr(cp, r82, [-1, 2, -2, 1])
-!   r83 => mptr(cp, r83, [-1, 2, -2, 1, 1, 2])
-!   r84 => mptr(cp, r84, [-1, 2, -2, 1, 1, 2, 1, 2])
+  call mptr(cp, i41, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'i41, size=',size(i41),' bounds=',lbound(i41,1),ubound(i41,1)
+  call mptr(cp, i42, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'i42, size=',size(i42),' bounds=',lbound(i42,1),ubound(i42,1),lbound(i42,2),ubound(i42,2)
+  call mptr(cp, i43, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'i43, size=',size(i43),' bounds=',lbound(i43,1),ubound(i43,1),lbound(i43,2),ubound(i43,2),lbound(i43,3),ubound(i43,3)
+  call mptr(cp, i44, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'i44, size=',size(i44),' bounds=',lbound(i44,1),ubound(i44,1),lbound(i44,2),ubound(i44,2),lbound(i44,3),ubound(i44,3),lbound(i44,4),ubound(i44,4)
+  call mptr(cp, i81, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'i81, size=',size(i81),' bounds=',lbound(i81,1),ubound(i81,1)
+  call mptr(cp, i82, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'i82, size=',size(i82),' bounds=',lbound(i82,1),ubound(i82,1),lbound(i82,2),ubound(i82,2)
+  call mptr(cp, i83, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'i83, size=',size(i83),' bounds=',lbound(i83,1),ubound(i83,1),lbound(i83,2),ubound(i83,2),lbound(i83,3),ubound(i83,3)
+  call mptr(cp, i84, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'i84, size=',size(i84),' bounds=',lbound(i84,1),ubound(i84,1),lbound(i84,2),ubound(i84,2),lbound(i84,3),ubound(i84,3),lbound(i84,4),ubound(i84,4)
+  call mptr(cp, r41, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'r41, size=',size(r41),' bounds=',lbound(r41,1),ubound(r41,1)
+  call mptr(cp, r42, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'r42, size=',size(r42),' bounds=',lbound(r42,1),ubound(r42,1),lbound(r42,2),ubound(r42,2)
+  call mptr(cp, r43, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'r43, size=',size(r43),' bounds=',lbound(r43,1),ubound(r43,1),lbound(r43,2),ubound(r43,2),lbound(r43,3),ubound(r43,3)
+  call mptr(cp, r44, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'r44, size=',size(r44),' bounds=',lbound(r44,1),ubound(r44,1),lbound(r44,2),ubound(r44,2),lbound(r44,3),ubound(r44,3),lbound(r44,4),ubound(r44,4)
+  call mptr(cp, r81, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'r81, size=',size(r81),' bounds=',lbound(r81,1),ubound(r81,1)
+  call mptr(cp, r82, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'r82, size=',size(r82),' bounds=',lbound(r82,1),ubound(r82,1),lbound(r82,2),ubound(r82,2)
+  call mptr(cp, r83, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'r83, size=',size(r83),' bounds=',lbound(r83,1),ubound(r83,1),lbound(r83,2),ubound(r83,2),lbound(r83,3),ubound(r83,3)
+  call mptr(cp, r84, [-1, 2, -2, 1, -3, 0 ,-4, -1])
+  print 1,'r84, size=',size(r84),' bounds=',lbound(r84,1),ubound(r84,1),lbound(r84,2),ubound(r84,2),lbound(r84,3),ubound(r84,3),lbound(r84,4),ubound(r84,4)
+1 format(A,I8,A,8I4)
 end subroutine poly
 
-function pr41d(pi,po,di) result(p)
+subroutine pr41d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
-  real, dimension(:), intent(IN), pointer :: po
+  real, dimension(:), intent(OUT), pointer :: p
   integer, dimension(:), intent(IN) :: di
-  real, dimension(:), pointer :: p
+!   real, dimension(:), pointer :: p
   real, dimension(:), pointer :: t
 
   nullify(p)
-!   nullify(po)
+!   nullify(p)
   if(size(di) < 2) return
   call C_F_POINTER(pi, t, [1000000])
   p(di(1):di(2)) => t
-!   po(di(1):di(2)) => t
-end function pr41d
+!   p(di(1):di(2)) => t
+end subroutine pr41d
 
-function pr81d(pi,po,di) result(p)
+subroutine pr81d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
-  real(kind=8), dimension(:), intent(IN), pointer :: po
+  real(kind=8), dimension(:), intent(OUT), pointer :: p
   integer, dimension(:), intent(IN) :: di
-  real(kind=8), dimension(:), pointer :: p
+!   real(kind=8), dimension(:), pointer :: p
   real(kind=8), dimension(:), pointer :: t
 
   nullify(p)
-!   nullify(po)
+!   nullify(p)
   if(size(di) < 2) return
   call C_F_POINTER(pi, t, [1000000])
   p(di(1):di(2)) => t
-!   po(di(1):di(2)) => t
-end function pr81d
+!   p(di(1):di(2)) => t
+end subroutine pr81d
 
-function pi41d(pi,po,di) result(p)
+subroutine pi41d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
-  integer, dimension(:), intent(IN), pointer :: po
+  integer, dimension(:), intent(OUT), pointer :: p
   integer, dimension(:), intent(IN) :: di
-  integer, dimension(:), pointer :: p
+!   integer, dimension(:), pointer :: p
   integer, dimension(:), pointer :: t
 
   nullify(p)
-!   nullify(po)
+!   nullify(p)
   if(size(di) < 2) return
   call C_F_POINTER(pi, t, [1000000])
   p(di(1):di(2)) => t
-!   po(di(1):di(2)) => t
-end function pi41d
+!   p(di(1):di(2)) => t
+end subroutine pi41d
 
-function pi81d(pi,po,di) result(p)
+subroutine pi81d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
-  integer(kind=8), dimension(:), intent(IN), pointer :: po
+  integer(kind=8), dimension(:), intent(OUT), pointer :: p
   integer, dimension(:), intent(IN) :: di
-  integer(kind=8), dimension(:), pointer :: p
+!   integer(kind=8), dimension(:), pointer :: p
   integer(kind=8), dimension(:), pointer :: t
 
   nullify(p)
-!   nullify(po)
+!   nullify(p)
   if(size(di) < 2) return
   call C_F_POINTER(pi, t, [1000000])
   p(di(1):di(2)) => t
-!   po(di(1):di(2)) => t
-end function pi81d
+!   p(di(1):di(2)) => t
+end subroutine pi81d
 
-function pr42d(pi,po,di) result(p)
+subroutine pr42d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
-  real, dimension(:,:), intent(IN), pointer :: po
+  real, dimension(:,:), intent(OUT), pointer :: p
   integer, dimension(:), intent(IN) :: di
-  real, dimension(:,:), pointer :: p
+!   real, dimension(:,:), pointer :: p
   real, dimension(:), pointer :: t
 
   nullify(p)
-!   nullify(po)
+!   nullify(p)
   if(size(di) < 4) return
   call C_F_POINTER(pi, t, [1000000])
   p(di(1):di(2),di(3):di(4)) => t
-!   po(di(1):di(2)) => t
-end function pr42d
+!   p(di(1):di(2)) => t
+end subroutine pr42d
 
-function pr82d(pi,po,di) result(p)
+subroutine pr82d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
-  real(kind=8), dimension(:,:), intent(IN), pointer :: po
+  real(kind=8), dimension(:,:), intent(OUT), pointer :: p
   integer, dimension(:), intent(IN) :: di
-  real(kind=8), dimension(:,:), pointer :: p
+!   real(kind=8), dimension(:,:), pointer :: p
   real(kind=8), dimension(:), pointer :: t
 
   nullify(p)
-!   nullify(po)
+!   nullify(p)
   if(size(di) < 4) return
   call C_F_POINTER(pi, t, [1000000])
   p(di(1):di(2),di(3):di(4)) => t
-!   po(di(1):di(2)) => t
-end function pr82d
+!   p(di(1):di(2)) => t
+end subroutine pr82d
 
-function pi42d(pi,po,di) result(p)
+subroutine pi42d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
-  integer, dimension(:,:), intent(IN), pointer :: po
+  integer, dimension(:,:), intent(OUT), pointer :: p
   integer, dimension(:), intent(IN) :: di
-  integer, dimension(:,:), pointer :: p
+!   integer, dimension(:,:), pointer :: p
   integer, dimension(:), pointer :: t
 
   nullify(p)
-!   nullify(po)
+!   nullify(p)
   if(size(di) < 4) return
   call C_F_POINTER(pi, t, [1000000])
   p(di(1):di(2),di(3):di(4)) => t
-!   po(di(1):di(2)) => t
-end function pi42d
+!   p(di(1):di(2)) => t
+end subroutine pi42d
 
-function pi82d(pi,po,di) result(p)
+subroutine pi82d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
-  integer(kind=8), dimension(:,:), intent(IN), pointer :: po
+  integer(kind=8), dimension(:,:), intent(OUT), pointer :: p
   integer, dimension(:), intent(IN) :: di
-  integer(kind=8), dimension(:,:), pointer :: p
+!   integer(kind=8), dimension(:,:), pointer :: p
   integer(kind=8), dimension(:), pointer :: t
 
   nullify(p)
-!   nullify(po)
+!   nullify(p)
   if(size(di) < 4) return
   call C_F_POINTER(pi, t, [1000000])
   p(di(1):di(2),di(3):di(4)) => t
-!   po(di(1):di(2)) => t
-end function pi82d
+!   p(di(1):di(2)) => t
+end subroutine pi82d
+
+subroutine pr43d(pi,p,di)
+  use ISO_C_BINDING
+  implicit none
+  type(C_PTR), intent(IN) :: pi
+  real, dimension(:,:,:), intent(OUT), pointer :: p
+  integer, dimension(:), intent(IN) :: di
+!   real, dimension(:,:), pointer :: p
+  real, dimension(:), pointer :: t
+
+  nullify(p)
+!   nullify(p)
+  if(size(di) < 6) return
+  call C_F_POINTER(pi, t, [1000000])
+  p(di(1):di(2),di(3):di(4),di(5):di(6)) => t
+!   p(di(1):di(2)) => t
+end subroutine pr43d
+
+subroutine pr83d(pi,p,di)
+  use ISO_C_BINDING
+  implicit none
+  type(C_PTR), intent(IN) :: pi
+  real(kind=8), dimension(:,:,:), intent(OUT), pointer :: p
+  integer, dimension(:), intent(IN) :: di
+!   real, dimension(:,:), pointer :: p
+  real(kind=8), dimension(:), pointer :: t
+
+  nullify(p)
+!   nullify(p)
+  if(size(di) < 6) return
+  call C_F_POINTER(pi, t, [1000000])
+  p(di(1):di(2),di(3):di(4),di(5):di(6)) => t
+!   p(di(1):di(2)) => t
+end subroutine pr83d
+
+subroutine pi43d(pi,p,di)
+  use ISO_C_BINDING
+  implicit none
+  type(C_PTR), intent(IN) :: pi
+  integer, dimension(:,:,:), intent(OUT), pointer :: p
+  integer, dimension(:), intent(IN) :: di
+!   real, dimension(:,:), pointer :: p
+  integer, dimension(:), pointer :: t
+
+  nullify(p)
+!   nullify(p)
+  if(size(di) < 6) return
+  call C_F_POINTER(pi, t, [1000000])
+  p(di(1):di(2),di(3):di(4),di(5):di(6)) => t
+!   p(di(1):di(2)) => t
+end subroutine pi43d
+
+subroutine pi83d(pi,p,di)
+  use ISO_C_BINDING
+  implicit none
+  type(C_PTR), intent(IN) :: pi
+  integer(kind=8), dimension(:,:,:), intent(OUT), pointer :: p
+  integer, dimension(:), intent(IN) :: di
+!   real, dimension(:,:), pointer :: p
+  integer(kind=8), dimension(:), pointer :: t
+
+  nullify(p)
+!   nullify(p)
+  if(size(di) < 6) return
+  call C_F_POINTER(pi, t, [1000000])
+  p(di(1):di(2),di(3):di(4),di(5):di(6)) => t
+!   p(di(1):di(2)) => t
+end subroutine pi83d
+
+subroutine pr44d(pi,p,di)
+  use ISO_C_BINDING
+  implicit none
+  type(C_PTR), intent(IN) :: pi
+  real, dimension(:,:,:,:), intent(OUT), pointer :: p
+  integer, dimension(:), intent(IN) :: di
+!   real, dimension(:,:), pointer :: p
+  real, dimension(:), pointer :: t
+
+  nullify(p)
+!   nullify(p)
+  if(size(di) < 8) return
+  call C_F_POINTER(pi, t, [1000000])
+  p(di(1):di(2),di(3):di(4),di(5):di(6),di(7):di(8)) => t
+!   p(di(1):di(2)) => t
+end subroutine pr44d
+
+subroutine pr84d(pi,p,di)
+  use ISO_C_BINDING
+  implicit none
+  type(C_PTR), intent(IN) :: pi
+  real(kind=8), dimension(:,:,:,:), intent(OUT), pointer :: p
+  integer, dimension(:), intent(IN) :: di
+!   real, dimension(:,:), pointer :: p
+  real(kind=8), dimension(:), pointer :: t
+
+  nullify(p)
+!   nullify(p)
+  if(size(di) < 8) return
+  call C_F_POINTER(pi, t, [1000000])
+  p(di(1):di(2),di(3):di(4),di(5):di(6),di(7):di(8)) => t
+!   p(di(1):di(2)) => t
+end subroutine pr84d
+
+subroutine pi44d(pi,p,di)
+  use ISO_C_BINDING
+  implicit none
+  type(C_PTR), intent(IN) :: pi
+  integer, dimension(:,:,:,:), intent(OUT), pointer :: p
+  integer, dimension(:), intent(IN) :: di
+!   real, dimension(:,:), pointer :: p
+  integer, dimension(:), pointer :: t
+
+  nullify(p)
+!   nullify(p)
+  if(size(di) < 8) return
+  call C_F_POINTER(pi, t, [1000000])
+  p(di(1):di(2),di(3):di(4),di(5):di(6),di(7):di(8)) => t
+!   p(di(1):di(2)) => t
+end subroutine pi44d
+
+subroutine pi84d(pi,p,di)
+  use ISO_C_BINDING
+  implicit none
+  type(C_PTR), intent(IN) :: pi
+  integer(kind=8), dimension(:,:,:,:), intent(OUT), pointer :: p
+  integer, dimension(:), intent(IN) :: di
+!   real, dimension(:,:), pointer :: p
+  integer(kind=8), dimension(:), pointer :: t
+
+  nullify(p)
+!   nullify(p)
+  if(size(di) < 8) return
+  call C_F_POINTER(pi, t, [1000000])
+  p(di(1):di(2),di(3):di(4),di(5):di(6),di(7):di(8)) => t
+!   p(di(1):di(2)) => t
+end subroutine pi84d
 
 program test
   use ISO_C_BINDING
