@@ -1,4 +1,4 @@
-subroutine poly(cp)
+subroutine shape_c_pointer_test(cp)
   use ISO_C_BINDING
   implicit none
   include 'shape_c_pointer.inc'
@@ -53,9 +53,9 @@ subroutine poly(cp)
   call shape_c_pointer(cp, r84, [-1, 2, -2, 1, -3, 0 ,-4, -1])
   print 1,'r84, size=',size(r84),' bounds=',lbound(r84,1),ubound(r84,1),lbound(r84,2),ubound(r84,2),lbound(r84,3),ubound(r84,3),lbound(r84,4),ubound(r84,4)
 1 format(A,I8,A,8I4)
-end subroutine poly
+end subroutine shape_c_pointer_test
 
-subroutine pr41d(pi,p,di)
+subroutine shape_c_pointer_r41d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -67,9 +67,9 @@ subroutine pr41d(pi,p,di)
   if(size(di) < 2) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)])
   p(di(1):di(2)) => t
-end subroutine pr41d
+end subroutine shape_c_pointer_r41d
 
-subroutine pr81d(pi,p,di)
+subroutine shape_c_pointer_r81d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -81,9 +81,9 @@ subroutine pr81d(pi,p,di)
   if(size(di) < 2) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)])
   p(di(1):di(2)) => t
-end subroutine pr81d
+end subroutine shape_c_pointer_r81d
 
-subroutine pi41d(pi,p,di)
+subroutine shape_c_pointer_i41d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -95,9 +95,9 @@ subroutine pi41d(pi,p,di)
   if(size(di) < 2) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)])
   p(di(1):di(2)) => t
-end subroutine pi41d
+end subroutine shape_c_pointer_i41d
 
-subroutine pi81d(pi,p,di)
+subroutine shape_c_pointer_i81d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -109,9 +109,9 @@ subroutine pi81d(pi,p,di)
   if(size(di) < 2) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)])
   p(di(1):di(2)) => t
-end subroutine pi81d
+end subroutine shape_c_pointer_i81d
 
-subroutine pr42d(pi,p,di)
+subroutine shape_c_pointer_r42d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -123,9 +123,9 @@ subroutine pr42d(pi,p,di)
   if(size(di) < 4) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)*(di(4)-di(3)+1)])
   p(di(1):di(2),di(3):di(4)) => t
-end subroutine pr42d
+end subroutine shape_c_pointer_r42d
 
-subroutine pr82d(pi,p,di)
+subroutine shape_c_pointer_r82d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -137,9 +137,9 @@ subroutine pr82d(pi,p,di)
   if(size(di) < 4) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)*(di(4)-di(3)+1)])
   p(di(1):di(2),di(3):di(4)) => t
-end subroutine pr82d
+end subroutine shape_c_pointer_r82d
 
-subroutine pi42d(pi,p,di)
+subroutine shape_c_pointer_i42d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -151,9 +151,9 @@ subroutine pi42d(pi,p,di)
   if(size(di) < 4) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)*(di(4)-di(3)+1)])
   p(di(1):di(2),di(3):di(4)) => t
-end subroutine pi42d
+end subroutine shape_c_pointer_i42d
 
-subroutine pi82d(pi,p,di)
+subroutine shape_c_pointer_i82d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -165,9 +165,9 @@ subroutine pi82d(pi,p,di)
   if(size(di) < 4) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)*(di(4)-di(3)+1)])
   p(di(1):di(2),di(3):di(4)) => t
-end subroutine pi82d
+end subroutine shape_c_pointer_i82d
 
-subroutine pr43d(pi,p,di)
+subroutine shape_c_pointer_r43d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -179,9 +179,9 @@ subroutine pr43d(pi,p,di)
   if(size(di) < 6) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)*(di(4)-di(3)+1)*(di(6)-di(5)+1)])
   p(di(1):di(2),di(3):di(4),di(5):di(6)) => t
-end subroutine pr43d
+end subroutine shape_c_pointer_r43d
 
-subroutine pr83d(pi,p,di)
+subroutine shape_c_pointer_r83d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -193,9 +193,9 @@ subroutine pr83d(pi,p,di)
   if(size(di) < 6) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)*(di(4)-di(3)+1)*(di(6)-di(5)+1)])
   p(di(1):di(2),di(3):di(4),di(5):di(6)) => t
-end subroutine pr83d
+end subroutine shape_c_pointer_r83d
 
-subroutine pi43d(pi,p,di)
+subroutine shape_c_pointer_i43d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -207,9 +207,9 @@ subroutine pi43d(pi,p,di)
   if(size(di) < 6) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)*(di(4)-di(3)+1)*(di(6)-di(5)+1)])
   p(di(1):di(2),di(3):di(4),di(5):di(6)) => t
-end subroutine pi43d
+end subroutine shape_c_pointer_i43d
 
-subroutine pi83d(pi,p,di)
+subroutine shape_c_pointer_i83d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -221,9 +221,9 @@ subroutine pi83d(pi,p,di)
   if(size(di) < 6) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)*(di(4)-di(3)+1)*(di(6)-di(5)+1)])
   p(di(1):di(2),di(3):di(4),di(5):di(6)) => t
-end subroutine pi83d
+end subroutine shape_c_pointer_i83d
 
-subroutine pr44d(pi,p,di)
+subroutine shape_c_pointer_r44d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -235,9 +235,9 @@ subroutine pr44d(pi,p,di)
   if(size(di) < 8) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)*(di(4)-di(3)+1)*(di(6)-di(5)+1)*(di(8)-di(7)+1)])
   p(di(1):di(2),di(3):di(4),di(5):di(6),di(7):di(8)) => t
-end subroutine pr44d
+end subroutine shape_c_pointer_r44d
 
-subroutine pr84d(pi,p,di)
+subroutine shape_c_pointer_r84d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -249,9 +249,9 @@ subroutine pr84d(pi,p,di)
   if(size(di) < 8) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)*(di(4)-di(3)+1)*(di(6)-di(5)+1)*(di(8)-di(7)+1)])
   p(di(1):di(2),di(3):di(4),di(5):di(6),di(7):di(8)) => t
-end subroutine pr84d
+end subroutine shape_c_pointer_r84d
 
-subroutine pi44d(pi,p,di)
+subroutine shape_c_pointer_i44d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -263,9 +263,9 @@ subroutine pi44d(pi,p,di)
   if(size(di) < 8) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)*(di(4)-di(3)+1)*(di(6)-di(5)+1)*(di(8)-di(7)+1)])
   p(di(1):di(2),di(3):di(4),di(5):di(6),di(7):di(8)) => t
-end subroutine pi44d
+end subroutine shape_c_pointer_i44d
 
-subroutine pi84d(pi,p,di)
+subroutine shape_c_pointer_i84d(pi,p,di)
   use ISO_C_BINDING
   implicit none
   type(C_PTR), intent(IN) :: pi
@@ -277,7 +277,7 @@ subroutine pi84d(pi,p,di)
   if(size(di) < 8) return
   call C_F_POINTER(pi, t, [(di(2)-di(1)+1)*(di(4)-di(3)+1)*(di(6)-di(5)+1)*(di(8)-di(7)+1)])
   p(di(1):di(2),di(3):di(4),di(5):di(6),di(7):di(8)) => t
-end subroutine pi84d
+end subroutine shape_c_pointer_i84d
 
 program test
   use ISO_C_BINDING
@@ -285,5 +285,5 @@ program test
   integer, dimension(1000000), target :: dummy
   type(C_PTR) :: cp
   cp = c_loc(dummy(1))
-  call poly(cp)
+  call shape_c_pointer_test(cp)
 end program
