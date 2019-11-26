@@ -23,8 +23,10 @@
 ! TODO:
 ! QLXDTYP:  TO BE REVISITED, POINTLESS THE WAY IT IS BEING USED
 !
+#define get_address_from(item) LOC(item)
 #define WITH_EXPRESSIONS
 module readlx_internals
+  use ISO_C_BINDING
   implicit none
   integer, parameter :: MAX_ABS_INT =  268435455  ! (lower 28 bits)            ! before = 2147483647
 !   COMMON /PARMADR/NPRM,NARG,DOPE(41),PARM(101)
@@ -109,6 +111,29 @@ module readlx_internals
 !       DATA IPTADR /256 * 0,256 * 0/
 !       DATA NAMES /256 * ' '/
 !       DATA NENTRY /0/
+ contains
+  subroutine set_content_at_location(addr, ind, val)
+    integer(C_INTPTR_T), intent(IN) :: addr
+    integer, intent(IN) :: ind
+    integer, intent(IN) :: val
+  
+    integer, dimension(*) :: pointee
+    pointer(p, pointee)
+
+    p = transfer(addr, p)
+    pointee(ind) = val
+  end subroutine set_content_at_location
+  subroutine get_content_at_location(addr, ind, val)
+    integer(C_INTPTR_T), intent(IN) :: addr
+    integer, intent(IN) :: ind
+    integer, intent(OUT) :: val
+  
+    integer, dimension(*) :: pointee
+    pointer(p, pointee)
+
+    p = transfer(addr, p)
+    val = pointee(ind)
+  end subroutine get_content_at_location
 end module
 !
 !**FONCTION ARGDIMS LONGUEUR D'ARGUMENTS (APPEL VIA READLX)
@@ -184,6 +209,7 @@ end module
 !
 !**S/P QLXADI GET VALUE OF INDEXED ARRAY COMPONENT  (ONLY USED BY QLXVAL)
       SUBROUTINE QLXADI(KLE,IND,VALEUR,dummy,ERR)  ! in case of error, VALEUR is undefined
+      use readlx_internals, only : get_content_at_location
       implicit none
       INTEGER, intent(IN)  :: IND           ! index (origin 1)
       INTEGER, intent(OUT) :: VALEUR        ! value returned to user
@@ -213,7 +239,8 @@ end module
          ERR = .TRUE.
       ENDIF 
       IF((.NOT.ERR))THEN
-         CALL PEEK(LOCVAR,INDX,VALEUR)  ! get 32 bit value at locvar + INDX -1 elements
+!          CALL PEEK(LOCVAR,INDX,VALEUR)  ! get 32 bit value at locvar + INDX -1 elements
+         CALL get_content_at_location(LOCVAR,INDX,VALEUR)  ! get 32 bit value at locvar + INDX -1 elements
       ENDIF 
 ! print *,'qlxadi, kle = ',"'"//trim(KLE)//"'",' indx=',indx
       RETURN
@@ -226,7 +253,7 @@ end module
       LOGICAL, intent(OUT) :: ERR
       INTEGER :: LIMITS,ITYP,IND
       Integer(kind=8) :: LOCCNT, locvar
-      Integer(kind=8), external :: get_address_from
+!       Integer(kind=8), external :: get_address_from
       integer, dimension(*) :: VARI
       POINTER (P,VARI)
 !*
@@ -234,7 +261,8 @@ end module
 !
       IF((.NOT. ERR))THEN
          CALL QLXFND(KLE,locvar,LOCCNT,LIMITS,ITYP)               ! find base address of key (symbol)
-         call make_cray_pointer(P,locvar)                         ! make cray pointer from LOCVAR
+!          call make_cray_pointer(P,locvar)                         ! make cray pointer from LOCVAR
+         P = transfer(locvar,P)
          IF((IND.LE.LIMITS .AND. ITYP.GE.0 .AND. ITYP.LE.1))THEN
             QLXADR = get_address_from(VARI(IND))      ! loc(vari(ind)) would probably be O.K.
          ELSE 
@@ -251,7 +279,8 @@ end module
 !
 !**S/P QLXASG ASSIGNATION D'UNE OU PLUSIEURS VALEURS
       SUBROUTINE QLXASG(VAL,ICOUNT,LIMIT,ERR)   ! process assignment statement
-      use readlx_internals, only : JVAL, ZVAL, LEN, TYPE, TOKEN, LINEFMT, KARMOT
+      use readlx_internals, only : JVAL, ZVAL, LEN, TYPE, TOKEN, LINEFMT, KARMOT, &
+                                   set_content_at_location, get_content_at_location
       implicit none
       integer(kind=8), intent(IN) :: VAL           ! assignment target MEMORY ADDRESS
       INTEGER, intent(OUT)        :: ICOUNT        ! number of values stored
@@ -300,7 +329,7 @@ end module
             ENDIF 
 
             IF((TYPE.EQ.8))THEN    ! expression result (from qlxxpr)
-!                call get_content_of_location(JVAL,1,JVAL)    ! this is BROKEN, it will not work if JVAL is 32 bit value
+!                call get_content_at_location(JVAL,1,JVAL)    ! this is BROKEN, it will not work if JVAL is 32 bit value
                 JLEN = JLEN + 1
                 ITEMP(JLEN) = JVAL
 
@@ -339,7 +368,7 @@ end module
             ! print *,'QLXASG : store value(s)',IREPCN,JLEN
                       DO  I=1,IREPCN       ! repeat count
                         DO  J=1,JLEN       ! item length (1 for numerical values)
-                          call set_content_of_location(VAL,IND+J-1,ITEMP(J))
+                          call set_content_at_location(VAL,IND+J-1,ITEMP(J))
                         enddo
                         IND=IND+MAX(JLEN,1)
                       enddo 
@@ -407,14 +436,14 @@ end module
 !
       SUBROUTINE QLXCALL(SUB,ICOUNT,LIMITS,ERR)   ! process a call directive NAME(parm,parm,....,parm) (including expresions now)
       use readlx_internals, only : DOPE, DOPEA, ADR, DOPES, NDOPES, MAX_ARGL, JVAL, LEN, &
-                                   KARMOT, PARM, TOKEN, TYPE, LINEFMT, NARG, NPRM, TOK_NIT
+                                   KARMOT, PARM, TOKEN, TYPE, LINEFMT, NARG, NPRM, TOK_NIT, set_content_at_location
       implicit none
       Integer(kind=8), intent(IN) :: SUB        ! address of subroutine to call
       Integer(kind=8), intent(IN) :: ICOUNT     ! number of arguments
       integer, intent(IN)         :: limits     ! min and max acceptable number of arguments (maxargs + 100 * minargs)
       logical, intent(OUT)        :: ERR
 !
-      Integer(kind=8), external :: get_address_from
+!       Integer(kind=8), external :: get_address_from
       EXTERNAL RMTCALL, QLXADR, QLXVAL
       INTEGER  RMTCALL, QLXVAL
       INTEGER LIM1,LIM2,JLEN,PREVI
@@ -553,9 +582,9 @@ end module
             CALL QLXERR(81022,'QLXCALL')
             ERR = .TRUE.
         ELSE 
-            call set_content_of_location(ICOUNT,1,NARG)   ! set number of actukal arguments to this routine
+            call set_content_at_location(ICOUNT,1,NARG)   ! set number of actukal arguments to this routine
             JUNK=RMTCALL(SUB,ADR)                         ! perform external call, ADR is list of argument addresses
-            call set_content_of_location(ICOUNT,1,0)      ! reset number of arguments to zero after call returns
+            call set_content_at_location(ICOUNT,1,0)      ! reset number of arguments to zero after call returns
             CALL QLXFLSH('$')                             ! flush rest of input line
         ENDIF 
       ENDIF 
@@ -775,7 +804,7 @@ end module
 !
 !        RETROUVE, A PARTIR DE LA CLE IKEY, L'ADRESSE DE IVAR,ICOUNT.
 !
-      Integer(kind=8), EXTERNAL :: get_address_from
+!       Integer(kind=8), EXTERNAL :: get_address_from
       INTEGER QLXNVAR, QLXUNDF, QLXPRNT
       EXTERNAL QLXNVAR, QLXUNDF, QLXPRNT, LOW2UP
       CHARACTER(len=8), save :: IKEY
@@ -958,7 +987,7 @@ end module
 !*
       CHARACTER(len=8) :: IKEY
       integer :: IPNT
-      integer, external :: get_address_from
+!       integer, external :: get_address_from
 !
 !     TROUVER LA CLE
 !
@@ -1231,13 +1260,13 @@ end module
 #if defined(WITH_EXPRESSIONS)
 !**S/P QLXOPR APPLIQUER UN OPERATEUR NUMERIQUE OU LOGIQUE
       SUBROUTINE QLXOPR(TOKENS,NTOKEN,TOKTYPE,OPRTR,ERR)   ! THIS IS BROKEN ON 64 BIT MACHINES
-      use readlx_internals, only : MAX_ABS_INT
+      use readlx_internals, only : MAX_ABS_INT, set_content_at_location, get_content_at_location
       implicit none
       INTEGER NTOKEN,OPRTR,TOKTYPE(NTOKEN), itok
       INTEGER(kind=8) :: TOKENS(NTOKEN)
       LOGICAL ERR
-      Integer*8 get_address_from
-      EXTERNAL get_address_from
+!       Integer*8 get_address_from
+!       EXTERNAL get_address_from
 
       INTEGER IZ1, IZ2, IR1, MINOPER
       REAL   Z1,  Z2,  R1
@@ -1261,14 +1290,14 @@ end module
          RETURN
       ENDIF 
       IF((TOKTYPE(NTOKEN).GT.0))THEN
-         call get_content_of_location(TOKENS(NTOKEN),1,itok)
+         call get_content_at_location(TOKENS(NTOKEN),1,itok)
          TOKENS(NTOKEN) = itok
          TOKTYPE(NTOKEN) = 0
       ENDIF 
       IF((OPRTR.NE.2 .AND. OPRTR.NE.17   .AND. OPRTR.NE.21 .AND. OPRTR.NE.4))THEN  ! NOT ']' , 'NOT', ':=' , 'U-'
 ! print *,'icitte',TOKTYPE(NTOKEN-1),TOKENS(NTOKEN-1)
          IF((TOKTYPE(NTOKEN-1).GT.0))THEN
-!             call get_content_of_location(TOKENS(NTOKEN-1),1,itok)
+!             call get_content_at_location(TOKENS(NTOKEN-1),1,itok)
 !             TOKENS(NTOKEN-1) = itok
             TOKTYPE(NTOKEN-1) = 0
          ENDIF 
@@ -1463,7 +1492,7 @@ end module
          RETURN
       ENDIF 
       itok = TOKENS(NTOKEN)
-      call set_content_of_location(TOKENS(NTOKEN-1),1,itok)
+      call set_content_at_location(TOKENS(NTOKEN-1),1,itok)
       NTOKEN = NTOKEN - 1
       RETURN
 1000  NTOKEN = NTOKEN + 1 - MINOPER
@@ -1673,7 +1702,8 @@ end module
 !
 !**S/P QLXTOK
       SUBROUTINE QLXTOK  ! get next token, if key or numeric item, JVAL contains numerical value when subroutine returns
-      use readlx_internals, only : TOKEN, JVAL, ZVAL, INEXPR, TOK_ADR, TOK_CNT, TOK_LIM, TOK_NIT, KARMOT, LEN, TYPE
+      use readlx_internals, only : TOKEN, JVAL, ZVAL, INEXPR, TOK_ADR, TOK_CNT, TOK_LIM, &
+                                   TOK_NIT, KARMOT, LEN, TYPE, get_content_at_location
       implicit none
 !
 !
@@ -1816,8 +1846,8 @@ end module
             TYPE =3                     ! not found, it is a string
             LENG = MIN(LENG,KARMOT)     ! enforce short string limits (KARMOT)
         ELSE IF( ((ITYP .EQ. 0) .OR. (ITYP .EQ. 1)))THEN       ! integer or SYMBOL, get 4 byte value, store into JVAL
-            call get_content_of_location(tok_adr,1,JVAL)
-            call get_content_of_location(tok_cnt,1,tok_nit)
+            call get_content_at_location(tok_adr,1,JVAL)
+            call get_content_at_location(tok_cnt,1,tok_nit)
         ELSE 
             JVAL = -1                 ! no value for bad token
         ENDIF 
@@ -1991,7 +2021,8 @@ end module
 #endif
       SUBROUTINE READLX(UNIT,KEND,KERR)
       use readlx_internals, only : NERR, INEXPR, SKIPFLG, INLB, CURREC, READREC, TOKEN, TYPE, &
-                                   LINEFMT, KARMOT, NC, LAST, EOFL, TMPFILE, JVAL, INPFILE
+                                   LINEFMT, KARMOT, NC, LAST, EOFL, TMPFILE, JVAL, INPFILE, &
+                                   set_content_at_location, get_content_at_location
       implicit none
 !
 !**S/R READLX - INTERPRETE DE DIRECTIVES
@@ -2063,9 +2094,9 @@ end module
             CALL QLXFND(TOKEN,LOCVAR,LOCCNT,LIMITS,ITYP)
 
             IF((ITYP.EQ.1 .AND. SKIPF(NSTRUC).EQ.0))THEN                    ! a SYMBOL of type 1 (assignation target)
-                call get_content_of_location(LOCCNT,1,IICNT)
+                call get_content_at_location(LOCCNT,1,IICNT)
                 CALL QLXASG(LOCVAR,IICNT,LIMITS,ERR)
-                call set_content_of_location(LOCCNT,1,IICNT)
+                call set_content_at_location(LOCCNT,1,IICNT)
 
             ELSE IF((ITYP.EQ.2 .AND. SKIPF(NSTRUC).EQ.0))THEN               ! a symbol of type 2 (subroutine call)
                 CALL QLXCALL(LOCVAR,LOCCNT,LIMITS,ERR)
@@ -2086,7 +2117,7 @@ end module
                         GOTO 23003
                       ENDIF 
                       IF((TYPE.EQ.8))THEN
-!                               call get_content_of_location(JVAL,1,JVAL)
+!                               call get_content_at_location(JVAL,1,JVAL)
                       ENDIF 
                       IF((IAND(JVAL,ishft(-1,32-(16))).EQ.0))THEN
                         SKIPF(NSTRUC) = 1
@@ -2134,7 +2165,7 @@ end module
                         GOTO 23003
                       ENDIF 
                       IF((TYPE.EQ.8))THEN
-!                                       call get_content_of_location(JVAL,1,JVAL)
+!                                       call get_content_at_location(JVAL,1,JVAL)
                       ENDIF 
                       IF((IAND(JVAL,ishft(-1,32-(16))).EQ.0))THEN
                         SKIPF(NSTRUC) = 1
