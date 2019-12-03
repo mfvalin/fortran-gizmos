@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <string.h>
 
 #define NEED_PRIVATE
 #include <time_trace.h>
@@ -46,8 +47,8 @@ void *TimeTraceCreate(){            // create and initialize a trace_table
   tt->initialized = 0;              // mark as not initialized
   tt->nbeads      = 0;              // 0 "beads" in table
   tt->nwords      = 0;              // nothing stored in table
-  tt->major       = 1;              // major version marker
-  tt->minor       = 0;              // minor version marker
+  tt->major       = MAJORV;         // major version marker
+  tt->minor       = MINORV;         // minor version marker
   tt->step        = 99999999;       // default "step" number
   tt->offset      = WhatTimeIsIt(); // initial offset
   tt->first       = NULL;           // pointer to first "bead"
@@ -179,6 +180,43 @@ void TimeTraceGetBuffers(time_context t, void **array, int *larray, int n){
   }
 }
 
+// get number of time trace buffers and total number of entries (useful for call to TimeTraceGetBuffers)
+// t           : time context (obtained from TimeTraceInit)
+// nbuf        : number of buffers
+// nent        : total number of entries
+// consolidate : if non zero consolidate data into a single buffer (allocated locally)
+void  *TimeTraceGetBufferData(time_context t, int *nbuf, int *nent, int consolidate){  
+  trace_table *tt = t.t;
+  bead *current;
+  int nbent;
+  unsigned int *data = NULL;
+  unsigned int *temp;
+
+  current = (bead *)tt->first;         // head of chain
+  *nbuf = tt->nbeads;
+  nbent = tt->nwords;
+  *nent = nbent;
+
+  if(consolidate){
+    data = (unsigned int *) malloc((nbent+4) * sizeof(unsigned int));   // allocate single buffer
+    data[0] = MAJORV;
+    data[1] = MINORV;
+    data[2] = tt->nbeads;
+    data[3] = nbent;
+    temp = data + 4;
+    if(data != NULL){                                               // malloc successful
+      current = (bead *)tt->first;                                  // first bead
+      while(current != NULL){                                       // loop over valid beads
+        nbent = current->nbent;                                     // entries in this bead
+        memcpy(temp, current->t, nbent * sizeof(unsigned int));     // copy to consolidation buffer
+        temp += nbent;                                              // bump destination pointer
+        current = (bead *)current->next;                            // next bead
+      }
+    }
+  }
+  return data;
+}
+
 // t        : time context (obtained from TimeTraceInit)
 // filename : base part of file name
 // ordinal  : integer (will be converted as 6 digit nnnnnn)
@@ -224,22 +262,24 @@ void TimeTraceDumpText(time_context t, char *filename, int ordinal){  // dump in
   i = 0;
   current = (bead *)tt->first;
   while(current != NULL){
-    tag = -2; nval = 0; for(j=0 ; j<10 ; j++) tm[j] = 0 ;
+    tag = -2; 
+    nval = 0; 
+    for(j=0 ; j<10 ; j++) tm[j] = 0 ;
     for(j=0 ; j<4 ; j++){
       if(i >= current->nbent){
-  current = (bead *)current->next;
-  if(current == NULL) return;
-  i = 0;
+        current = (bead *)current->next;
+        if(current == NULL) return;
+        i = 0;
       }
       if(j == 0){       // tag or step
-  tag = current->t[i]; nval = tag & 3 ; 
-  if(nval == 0){
-    cstep = tag >> 3 ; tag = -1; nval = 2; // fprintf(stderr,"step %d nval %d\n",cstep,nval);
-  }else{
-    tag = tag >> 3; //  fprintf(stderr,"tag   %d nval %d\n",tag,nval);
-  }
+        tag = current->t[i]; nval = tag & 3 ; 
+        if(nval == 0){
+          cstep = tag >> 3 ; tag = -1; nval = 2; // fprintf(stderr,"step %d nval %d\n",cstep,nval);
+        }else{
+          tag = tag >> 3; //  fprintf(stderr,"tag   %d nval %d\n",tag,nval);
+        }
       }else{           // j > 0, data
-  tm[j-1] = current->t[i];
+        tm[j-1] = current->t[i];
       }
       i++;
       if(j >= nval) break;
@@ -254,6 +294,61 @@ void TimeTraceDumpText(time_context t, char *filename, int ordinal){  // dump in
     }
     fprintf(fd,"\n");
   }
+  fclose(fd);
+}
+
+void TimeTraceSingleText(unsigned int *data, int nbent, char *filename, int ordinal){  // dump into file in text form
+  char fname[4096];
+  int cstep = 99999999;
+  FILE *fd;
+  int i, tag, nval, j;
+  unsigned long long tm[10];
+  unsigned long long tm8;
+
+  if(data == NULL || nbent <= 0) return;
+  if(data[0] != MAJORV || data[1] != MINORV || data[3] != nbent) {
+    fprintf(stderr,"ERROR: metadata is not consistent, expected %d %d %d, got %d, %d, %d\n",MAJORV,MINORV,nbent,data[0],data[1],data[3]);
+    return;
+  }
+
+  snprintf(fname, sizeof(fname)-1, "%s_%6.6d.txt", filename, ordinal);
+  fd = fopen(fname, "w");
+  fprintf(fd,"%d %d %d %d\n",data[0], data[1], data[2], data[3]);
+  data = data + 4;        // skip metadata at start of data buffer
+//   fprintf(fd,"%d %d %d %d\n",tt->major,tt->minor,tt->nbeads,tt->nwords);
+
+  i = 0;
+  while(i < nbent){
+    tag = -2; 
+    nval = 0; 
+    for(j=0 ; j<10 ; j++) tm[j] = 0 ;
+    for(j=0 ; j<4 ; j++){
+      if(i >= nbent) goto the_end;
+      if(j == 0){       // tag or step
+        tag = data[i]; 
+        nval = tag & 3 ; 
+        if(nval == 0){
+          cstep = tag >> 3 ; tag = -1; nval = 2; // fprintf(stderr,"step %d nval %d\n",cstep,nval);
+        }else{
+          tag = tag >> 3; //  fprintf(stderr,"tag   %d nval %d\n",tag,nval);
+        }
+      }else{           // j > 0, data
+        tm[j-1] = data[i];
+      }
+      i++;
+      if(j >= nval) break;
+    }
+    if(tag == -1) {                                          // step 
+      tm8 = (tm[0] << 32) | tm[1] ;
+      fprintf(fd,"%d %d %llu %d",cstep, tag, tm8, 0);
+    }else{                                                   // tag with or without barrier
+      fprintf(fd,"%d %d ",cstep, tag);
+      if(nval == 1) { nval = 2 ; tm[1] = 0 ; }
+      for(j=0 ; j<nval ; j++) fprintf(fd,"%llu ",tm[j]);
+    }
+    fprintf(fd,"\n");
+  }
+the_end:
   fclose(fd);
 }
 

@@ -6,9 +6,11 @@ CC = gcc
 
 FC = gfortran
 
-FFLAGS = 
+MPIFC = mpif90
 
-CFLAGS =
+FFLAGS = -O2
+
+CFLAGS = -O2
 
 all:	f_python f_tclsh f_wish f_demo libompstubs.a
 
@@ -40,7 +42,8 @@ f_wish : tkAppInit.c Fortran_to_c_main.F90
 	rm -f tkAppInit.o
 
 trace_test_mpi:
-	s.f90 $(FFLAGS) -mpi -DSELF_TEST time_trace.F90
+	$(CC) $(CFLAGS) -I. -c -DSELF_TEST time_trace_c.c
+	$(MPIFC) $(FFLAGS) -DSELF_TEST time_trace.F90 time_trace_c.o
 
 trace_test_f: time_trace_c.c time_trace.F90 time_trace.h
 	$(CC) $(CFLAGS) -I. -c -DSELF_TEST time_trace_c.c
@@ -51,4 +54,4 @@ trace_test_c: time_trace_c.c time_trace.h
 
 clean:	
 	rm -f *.o *.mod a.out f_python f_tclsh f_wish f_demo *~  *.s
-	rm -f libompstubs.a time_list_0*.txt time_list_0*.dat trace_test_c trace_test_f
+	rm -f libompstubs.a time_list_0*.txt time_list_0*.dat trace_test_c trace_test_f trace_test_mpi

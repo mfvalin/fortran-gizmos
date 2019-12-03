@@ -102,7 +102,7 @@ program test_trace
   integer, parameter :: MPI_COMM_WORLD = 0
   integer, parameter :: MPI_COMM_NULL = -1
 #endif
-  integer :: i, tag, rank
+  integer :: i, tag, rank, nbeads, nbent
   type(time_context) :: t
   type(C_PTR), dimension(10) :: array
   integer(C_INT), dimension(10) :: larray
@@ -135,6 +135,12 @@ program test_trace
   call time_trace_dump_binary(t, 'time_list', rank)
   call time_trace_get_buffers(t, array, larray, 10)
   write(6,'(10I6)')larray
+  array(1) = C_NULL_PTR
+  array(1) = time_trace_get_buffer_data(t, nbeads, nbent, 1)
+  if(C_ASSOCIATED(array(1))) then
+    print *,'nbeads =',nbeads,' , nbent =',nbent
+    call time_trace_single_text(array(1), nbent, 'time_dump'//achar(0), 1)
+  endif
 #if ! defined(NO_MPI)
   call MPI_finalize(ierr)
 #endif
