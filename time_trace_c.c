@@ -194,16 +194,16 @@ void  *TimeTraceGetBufferData(time_context t, int *nbuf, int *nent, int consolid
 
   current = (bead *)tt->first;         // head of chain
   *nbuf = tt->nbeads;
-  nbent = tt->nwords;
+  nbent = tt->nwords + HEADER;
   *nent = nbent;
 
   if(consolidate){
-    data = (unsigned int *) malloc((nbent+4) * sizeof(unsigned int));   // allocate single buffer
+    data = (unsigned int *) malloc((nbent+HEADER) * sizeof(unsigned int));   // allocate single buffer
     data[0] = MAJORV;
     data[1] = MINORV;
     data[2] = tt->nbeads;
-    data[3] = nbent;
-    temp = data + 4;
+    data[3] = nbent - HEADER;
+    temp = data + HEADER;
     if(data != NULL){                                               // malloc successful
       current = (bead *)tt->first;                                  // first bead
       while(current != NULL){                                       // loop over valid beads
@@ -305,6 +305,7 @@ void TimeTraceSingleText(unsigned int *data, int nbent, char *filename, int ordi
   unsigned long long tm[10];
   unsigned long long tm8;
 
+  nbent = nbent - HEADER;
   if(data == NULL || nbent <= 0) return;
   if(data[0] != MAJORV || data[1] != MINORV || data[3] != nbent) {
     fprintf(stderr,"ERROR: metadata is not consistent, expected %d %d %d, got %d, %d, %d\n",MAJORV,MINORV,nbent,data[0],data[1],data[3]);
@@ -314,7 +315,7 @@ void TimeTraceSingleText(unsigned int *data, int nbent, char *filename, int ordi
   snprintf(fname, sizeof(fname)-1, "%s_%6.6d.txt", filename, ordinal);
   fd = fopen(fname, "w");
   fprintf(fd,"%d %d %d %d\n",data[0], data[1], data[2], data[3]);
-  data = data + 4;        // skip metadata at start of data buffer
+  data = data + HEADER;        // skip metadata at start of data buffer
 //   fprintf(fd,"%d %d %d %d\n",tt->major,tt->minor,tt->nbeads,tt->nwords);
 
   i = 0;

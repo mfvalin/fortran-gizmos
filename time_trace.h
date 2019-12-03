@@ -17,6 +17,7 @@
 #if defined(NEED_PRIVATE)
 #define MAJORV 1
 #define MINORV 0
+#define HEADER 4
 #endif
 
 #if defined SELF_TEST
