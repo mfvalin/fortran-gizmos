@@ -104,4 +104,11 @@ interface
     integer(C_INT) :: n
   end function time_trace_expand
 
+  function i8_from_2_i4(a,b) result(i8) bind(C, name='I8From2I4')
+    import :: C_LONG_LONG , C_INT
+    implicit none
+    integer(C_INT), intent(IN), value :: a, b
+    integer(C_LONG_LONG) :: i8
+  end function i8_from_2_i4
+
 end interface

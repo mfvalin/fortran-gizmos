@@ -422,6 +422,14 @@ the_end:
   return nl;
 }
 
+unsigned long long I8From2I4(unsigned int a, unsigned int b){
+  unsigned long long t8;
+  t8 = a;
+  t8 <<= 32;
+  t8 |= b;
+  return t8;
+}
+
 #if defined(C_SELF_TEST)
 int main(){
   time_context t;

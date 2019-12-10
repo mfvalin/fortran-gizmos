@@ -103,7 +103,6 @@ program test_trace
   integer, parameter :: MPI_COMM_NULL = -1
 #endif
   integer :: i, tag, rank, nbeads, nbent, nused
-  integer(kind=8) :: tm8a, tm8b
   type(time_context) :: t
   type(C_PTR), dimension(10) :: array
   integer(C_INT), dimension(10) :: larray
@@ -150,12 +149,9 @@ program test_trace
     print *,'nused =',nused
     do i = 1, abs(nused)
       if(blob(2,i) == -1) then   ! step flag, only blob(1:4,i) are significant
-        tm8a = blob(3,i)
-        tm8a = ishft(tm8a,32)
-        tm8b = blob(4,i)
-        tm8b = and(tm8b, Z'00000000FFFFFFFF')
-        tm8a = or(tm8a, tm8b)
-        print 100,blob(1,i), blob(2,i), tm8a, 0
+        print 100,blob(1,i), blob(2,i), &
+                  i8_from_2_i4(blob(3,i), blob(4,i)), 0, &
+                  i8_from_2_i4(blob(5,i), blob(6,i)), 0
       else
         print 101,blob(1:6,i)
       endif
@@ -166,7 +162,7 @@ program test_trace
 #endif
 
   stop
-100 format(2I10,I18,I2)
+100 format(2I10,3(I18,I2))
 101 format(8I10)
 end program
 #if defined(NO_MPI)
