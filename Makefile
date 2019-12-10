@@ -41,9 +41,9 @@ f_wish : tkAppInit.c Fortran_to_c_main.F90
 	$(FC) -o f_wish Fortran_to_c_main.F90 tkAppInit.o -ltk8.5  -ltcl8.5
 	rm -f tkAppInit.o
 
-trace_test_mpi:
+trace_test_mpi: time_trace_c.c time_trace.F90 time_trace.h
 	$(CC) $(CFLAGS) -I. -c -DSELF_TEST time_trace_c.c
-	$(MPIFC) $(FFLAGS) -DSELF_TEST time_trace.F90 time_trace_c.o
+	$(MPIFC) $(FFLAGS) -DSELF_TEST time_trace.F90 time_trace_c.o -o trace_test_mpi
 
 trace_test_f: time_trace_c.c time_trace.F90 time_trace.h
 	$(CC) $(CFLAGS) -I. -c -DSELF_TEST time_trace_c.c

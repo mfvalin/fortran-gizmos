@@ -12,6 +12,10 @@
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 //  Lesser General Public License for more details.
+
+// NEED_PRIVATE should never be defined in user code, it is needed for the library code
+// Fortran programs should use #include <time_trace.hf> that will include  time_trace.h in an appropriate manner
+// C programs should use #include <time_trace.hf>
 #endif
 
 #if defined(NEED_PRIVATE)
@@ -141,46 +145,51 @@ interface
   subroutine time_trace_get_buffers(t, array, larray, n) bind(C,name='TimeTraceGetBuffers')
     import :: C_PTR , C_INT, time_context
     implicit none
-    type(time_context), intent(IN), value :: t              ! opaque time context pointer (passed to other routines)
+    type(time_context), intent(IN), value :: t              ! opaque time context pointer (from time_trace_init)
     type(C_PTR), dimension(n), intent(OUT) :: array         ! to receive pointers to buffers
     integer(C_INT), dimension(n), intent(OUT) :: larray     ! to receive lengths of buffers
     integer(C_INT), intent(IN), value :: n                  ! size of array and larray 
   end subroutine time_trace_get_buffers
 
+  ! this function is normally used with consolidate non zero
+  ! it will allocate the data buffer, return a C pointer to said buffer, nbuf and nent are set
+  ! if consolidate is zero, a NULL pointer is returned, nbuf and nent are set
   function time_trace_get_buffer_data(t, nbuf, nent, consolidate) result(p) bind(C,name='TimeTraceGetBufferData')
     import :: C_PTR , C_INT, time_context
     implicit none
-    type(time_context), intent(IN), value :: t              ! opaque time context pointer (passed to other routines)
+    type(time_context), intent(IN), value :: t              ! opaque time context pointer (from time_trace_init)
     integer(C_INT), intent(OUT) :: nbuf                     ! number of time trace buffers in this context
     integer(C_INT), intent(OUT) :: nent                     ! total number of entries (one entry == one 32 bit integer)
     integer(C_INT), intent(IN), value :: consolidate        ! if non zero, consolidate all buffers into one
     type(C_PTR) :: p
   end function time_trace_get_buffer_data
 
+  ! print data buffer from time_trace_get_buffer_data to a file
   subroutine time_trace_single_text(data, nbent, filename, ordinal) bind(C,name='TimeTraceSingleText')
     import :: C_PTR , C_INT
     implicit none
-    type(C_PTR), intent(IN), value :: data
-    integer(C_INT), intent(IN), value :: nbent
-    character(len=1), dimension(*), intent(IN) :: filename
+    type(C_PTR), intent(IN), value :: data                  ! data buffer pointer from time_trace_get_buffer_data
+    integer(C_INT), intent(IN), value :: nbent              ! value obtained from time_trace_get_buffer_data
+    character(len=1), dimension(*), intent(IN) :: filename  ! file name will be filename_nnnnnn.txt (nnnnnn from ordinal)
     integer(C_INT), intent(IN), value :: ordinal
   end subroutine time_trace_single_text
 
+  ! expand data buffer from time_trace_get_buffer_data into an integer array
   function time_trace_expand(data, nbent, ref, out, linesize, lines, ver) result(n) bind(C,name='TimeTraceExpand')
     import :: C_PTR , C_INT
     implicit none
-    type(C_PTR), intent(IN), value :: data
+    type(C_PTR), intent(IN), value :: data                  ! data buffer pointer from time_trace_get_buffer_data
     integer(C_INT), intent(IN), value :: nbent
-    integer(C_INT), dimension(4,lines), intent(INOUT) :: ref
-    integer(C_INT), dimension(4,lines), intent(OUT) :: out
+    integer(C_INT), dimension(linesize,lines), intent(INOUT) :: ref
+    integer(C_INT), dimension(linesize,lines), intent(OUT) :: out
     integer(C_INT), intent(IN), value :: linesize
     integer(C_INT), intent(IN), value :: lines
     integer(C_INT), intent(IN), value :: ver
     integer(C_INT) :: n
   end function time_trace_expand
 
-  function i8_from_2_i4(a,b) result(i8) bind(C, name='I8From2I4')
-    import :: C_LONG_LONG , C_INT
+  function i8_from_2_i4(a,b) result(i8) bind(C, name='I8From2I4')  ! pack 2 32 bit integers into a 64 bit integer
+    import :: C_LONG_LONG , C_INT                                  ! useful because Fortran has no notion of UNSIGNED integers
     implicit none
     integer(C_INT), intent(IN), value :: a, b
     integer(C_LONG_LONG) :: i8
@@ -202,6 +211,11 @@ end interface
   void TimeTraceBarr(time_context t, int tag, int barrier, int fcomm, void (*barrier_code)());
   void TimeTraceDump(time_context t, char *filename, int ordinal);
   void TimeTraceDumpBinary(time_context t, char *filename, int ordinal);
+  void  *TimeTraceGetBufferData(time_context t, int *nbuf, int *nent, int consolidate);
+  void TimeTraceDumpText(time_context t, char *filename, int ordinal);
+  void TimeTraceSingleText(unsigned int *data, int nbent, char *filename, int ordinal);
+  int TimeTraceExpand(unsigned int *data, int nbent, int *ref, int *out, int linesize, int lines, int ver);
+  unsigned long long I8From2I4(unsigned int a, unsigned int b);
 #endif
 
 #if defined(FORTRAN_SOURCE)
