@@ -360,11 +360,14 @@ the_end:
 
 // data     : data blob from TimeTraceGetBufferData
 // nbent    : length of data
-// out      : integer array, [*][lines] in C,   (4,lines) in Fortran
-// lines    : number of 4 integer elements items in out
+// ref      : integer array, [lines][linesize] in C,   (linesize,lines) in Fortran
+// out      : integer array, [lines][linesize] in C,   (linesize,lines) in Fortran
+// linesize : "line" size
+// lines    : number of linesize integer elements items in out
+// ver      : ref is used as input for consistency checking if ver not zero, as output if ver is zero
 // the function returns the number of 'lines' used in out
 // if out is too small, the functions return - (number of 'lines')
-int TimeTraceExpand(unsigned int *data, int nbent, int *out, int lines){  // expand blob from TimeTraceGetBufferData
+int TimeTraceExpand(unsigned int *data, int nbent, int *ref, int *out, int linesize, int lines, int ver){  // expand blob from TimeTraceGetBufferData
   int cstep = 99999999;
   int i, tag, nval, j, nl;
   unsigned long long tm[10];
@@ -401,11 +404,19 @@ int TimeTraceExpand(unsigned int *data, int nbent, int *out, int lines){  // exp
     }
     nl++;
     if(nl > lines) return ( -(nl-1) ) ; // OOPS, out is too small
-    out[0] = cstep;
-    out[1] = tag;
-    out[2] = tm[0];
-    out[3] = tm[1];
-    out += 4;
+    if(ver == 0){         // ref is an output
+      ref[0] = cstep;
+      ref[1] = tag;
+    }
+    if(ref[0] == cstep){  // check that cstep is consistent with ref
+      out[0] = tm[0];
+      out[1] = tm[1];
+    }else{                // inconsistent, flag as such
+      out[0] = -1;
+      out[1] = -1;
+    }
+    out += linesize;
+    ref += linesize;
   }
 the_end:
   return nl;
