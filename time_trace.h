@@ -166,6 +166,16 @@ interface
     integer(C_INT), intent(IN), value :: ordinal
   end subroutine time_trace_single_text
 
+  function time_trace_expand(data, nbent, out, lines) result(n) bind(C,name='TimeTraceExpand')
+    import :: C_PTR , C_INT
+    implicit none
+    type(C_PTR), intent(IN), value :: data
+    integer(C_INT), intent(IN), value :: nbent
+    integer(C_INT), dimension(4,lines), intent(OUT) :: out
+    integer(C_INT), intent(IN), value :: lines
+    integer(C_INT) :: n
+  end function time_trace_expand
+
 end interface
 #else
 #if defined(NEED_PRIVATE)

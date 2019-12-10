@@ -282,7 +282,7 @@ void TimeTraceDumpText(time_context t, char *filename, int ordinal){  // dump in
         tm[j-1] = current->t[i];
       }
       i++;
-      if(j >= nval) break;
+      if(j >= nval) break;  // done collecting
     }
     if(tag == -1) {                                          // step 
       tm8 = (tm[0] << 32) | tm[1] ;
@@ -297,7 +297,12 @@ void TimeTraceDumpText(time_context t, char *filename, int ordinal){  // dump in
   fclose(fd);
 }
 
-void TimeTraceSingleText(unsigned int *data, int nbent, char *filename, int ordinal){  // dump into file in text form
+// data     : data blob from TimeTraceGetBufferData
+// nbent    : length of data
+// filename : base part of file name
+// ordinal  : integer (will be converted as 6 digit nnnnnn)
+// file name will be filename_nnnnnn.txt
+void TimeTraceSingleText(unsigned int *data, int nbent, char *filename, int ordinal){  // dump blob into file in text form
   char fname[4096];
   int cstep = 99999999;
   FILE *fd;
@@ -337,7 +342,7 @@ void TimeTraceSingleText(unsigned int *data, int nbent, char *filename, int ordi
         tm[j-1] = data[i];
       }
       i++;
-      if(j >= nval) break;
+      if(j >= nval) break;  // done collecting
     }
     if(tag == -1) {                                          // step 
       tm8 = (tm[0] << 32) | tm[1] ;
@@ -351,6 +356,59 @@ void TimeTraceSingleText(unsigned int *data, int nbent, char *filename, int ordi
   }
 the_end:
   fclose(fd);
+}
+
+// data     : data blob from TimeTraceGetBufferData
+// nbent    : length of data
+// out      : integer array, [*][lines] in C,   (4,lines) in Fortran
+// lines    : number of 4 integer elements items in out
+// the function returns the number of 'lines' used in out
+// if out is too small, the functions return - (number of 'lines')
+int TimeTraceExpand(unsigned int *data, int nbent, int *out, int lines){  // expand blob from TimeTraceGetBufferData
+  int cstep = 99999999;
+  int i, tag, nval, j, nl;
+  unsigned long long tm[10];
+
+  nbent = nbent - HEADER;
+  if(data == NULL || nbent <= 0) return 0;
+  if(data[0] != MAJORV || data[1] != MINORV || data[3] != nbent) {
+    fprintf(stderr,"ERROR: metadata is not consistent, expected %d %d %d, got %d, %d, %d\n",MAJORV,MINORV,nbent,data[0],data[1],data[3]);
+    return 0;
+  }
+  data = data + HEADER;        // skip metadata at start of data buffer
+
+  i = 0;
+  nl = 0;
+  while(i < nbent){
+    tag = -2; 
+    nval = 0; 
+    for(j=0 ; j<10 ; j++) tm[j] = 0 ;
+    for(j=0 ; j<4 ; j++){
+      if(i >= nbent) goto the_end;
+      if(j == 0){       // tag or step
+        tag = data[i]; 
+        nval = tag & 3 ; 
+        if(nval == 0){
+          cstep = tag >> 3 ; tag = -1; nval = 2;
+        }else{
+          tag = tag >> 3;
+        }
+      }else{           // j > 0, data
+        tm[j-1] = data[i];
+      }
+      i++;
+      if(j >= nval) break;  // done collecting
+    }
+    nl++;
+    if(nl > lines) return ( -(nl-1) ) ; // OOPS, out is too small
+    out[0] = cstep;
+    out[1] = tag;
+    out[2] = tm[0];
+    out[3] = tm[1];
+    out += 4;
+  }
+the_end:
+  return nl;
 }
 
 #if defined(C_SELF_TEST)

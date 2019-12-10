@@ -102,10 +102,12 @@ program test_trace
   integer, parameter :: MPI_COMM_WORLD = 0
   integer, parameter :: MPI_COMM_NULL = -1
 #endif
-  integer :: i, tag, rank, nbeads, nbent
+  integer :: i, tag, rank, nbeads, nbent, nused
+  integer(kind=8) :: tm8a, tm8b
   type(time_context) :: t
   type(C_PTR), dimension(10) :: array
   integer(C_INT), dimension(10) :: larray
+  integer(C_INT), dimension(4,100) :: blob
   external :: MPI_barrier
 
   rank = 0
@@ -140,6 +142,21 @@ program test_trace
   if(C_ASSOCIATED(array(1))) then
     print *,'nbeads =',nbeads,' , nbent =',nbent
     call time_trace_single_text(array(1), nbent, 'time_dump'//achar(0), 1)
+
+    nused = time_trace_expand(array(1), nbent, blob, 14)
+    print *,'nused =',nused
+    do i = 1, abs(nused)
+      if(blob(2,i) == -1) then
+        tm8a = blob(3,i)
+        tm8a = ishft(tm8a,32)
+        tm8b = blob(4,i)
+        tm8b = and(tm8b, Z'00000000FFFFFFFF')
+        tm8a = or(tm8a, tm8b)
+        print *,blob(1,i), blob(2,i), tm8a, 0
+      else
+        print *,blob(:,i)
+      endif
+    enddo
   endif
 #if ! defined(NO_MPI)
   call MPI_finalize(ierr)
