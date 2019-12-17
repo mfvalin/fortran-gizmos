@@ -135,6 +135,13 @@ interface
     integer(C_INT), intent(IN), value :: step               ! time step number (MUST be >0 and <99999999)
   end subroutine time_trace_step
 
+  function time_trace_since_step(t) result(tm) bind(C,name='TimeTraceSinceStep')
+    import :: time_context, C_LONG_LONG
+    implicit none
+    type(time_context), intent(IN), value :: t              ! opaque time context pointer (from time_trace_init)
+    integer(C_LONG_LONG) :: tm                              ! time since last time_trace_step call (microseconds)
+  end function time_trace_since_step
+
   subroutine time_trace(t, tag)  bind(C,name='TimeTrace') ! insert a new time trace entry (no barrier)
     import :: time_context, C_INT
     implicit none
@@ -207,6 +214,7 @@ end interface
   void TimeTraceGetBuffers(time_context t, void **array, int *larray, int n);
   void TimeTraceInit(time_context *t);
   void TimeTraceStep(time_context t, int step);
+  long long  TimeTraceSinceStep(time_context t);
   void TimeTrace(time_context t, int tag);
   void TimeTraceBarr(time_context t, int tag, int barrier, int fcomm, void (*barrier_code)());
   void TimeTraceDump(time_context t, char *filename, int ordinal);

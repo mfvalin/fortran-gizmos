@@ -177,7 +177,7 @@ program test_trace   ! Fortran test program for library (C and Fortran code)
     enddo
 
     do i = 1, abs(nused)
-      if(blob(2,i) == -1) then   ! step flag, only blob(1:4,i) are significant
+      if(blob(2,i) == -1) then   ! step flag, combine 2 unsigned 32 bit integers into a 64 bit integer
         print 100,blob(1,i), blob(2,i), &
                   ((i8_from_2_i4(blob(2*j+1,i), blob(2*j+2,i)), 0) , j=1,nprc)
       else
