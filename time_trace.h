@@ -146,9 +146,9 @@ interface
     import :: C_PTR , C_INT, time_context
     implicit none
     type(time_context), intent(IN), value :: t              ! opaque time context pointer (from time_trace_init)
+    integer(C_INT), intent(IN), value :: n                  ! size of array and larray 
     type(C_PTR), dimension(n), intent(OUT) :: array         ! to receive pointers to buffers
     integer(C_INT), dimension(n), intent(OUT) :: larray     ! to receive lengths of buffers
-    integer(C_INT), intent(IN), value :: n                  ! size of array and larray 
   end subroutine time_trace_get_buffers
 
   ! this function is normally used with consolidate non zero
@@ -180,10 +180,10 @@ interface
     implicit none
     type(C_PTR), intent(IN), value :: data                  ! data buffer pointer from time_trace_get_buffer_data
     integer(C_INT), intent(IN), value :: nbent
-    integer(C_INT), dimension(linesize,lines), intent(INOUT) :: ref
-    integer(C_INT), dimension(linesize,lines), intent(OUT) :: out
     integer(C_INT), intent(IN), value :: linesize
     integer(C_INT), intent(IN), value :: lines
+    integer(C_INT), dimension(linesize,lines), intent(INOUT) :: ref
+    integer(C_INT), dimension(linesize,lines), intent(OUT) :: out
     integer(C_INT), intent(IN), value :: ver
     integer(C_INT) :: n
   end function time_trace_expand
