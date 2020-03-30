@@ -142,6 +142,14 @@ void TimeTraceBarr(time_context t, int tag, int barrier, int fcomm, void (*barri
 }
 
 // t   : time context (obtained from TimeTraceInit)
+long long  TimeTraceSinceStep(time_context t){   // time since last step call
+  long long t0 = WhatTimeIsIt();
+  trace_table *tt = t.t;
+
+  return (t0 - tt->offset);
+}
+
+// t   : time context (obtained from TimeTraceInit)
 // tag : 32 integer value, must be >0 and <99999999
 void TimeTrace(time_context t, int tag){   // insert tag and one time value
   long long t0 = WhatTimeIsIt();
