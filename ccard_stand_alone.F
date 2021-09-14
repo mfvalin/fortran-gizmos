@@ -35,13 +35,13 @@
 ! * Boston, MA 02111-1307, USA.
 ! */
 #define NKLEMAX 1024
-        module ccard_private
+        module ccard_private_sa
             USE ISO_C_BINDING
             PROCEDURE(), pointer, save :: callback => NULL()
-        end module ccard_private
+        end module ccard_private_sa
 
-        SUBROUTINE CCARD_callback(p)
-            USE ccard_private
+        SUBROUTINE CCARD_callback_sa(p)
+            USE ccard_private_sa
         external p
 
         call C_F_PROCPOINTER(C_FUNLOC(p), callback)
@@ -51,7 +51,7 @@
 ! RECUPERATION DES PARAMETRES D'APPEL A UN PROGRAMME
 
         SUBROUTINE CCARD(INCLE,DEF,VAL,N,II)
-        use ccard_private
+        use ccard_private_sa
         INTEGER N,II
         CHARACTER * (*) INCLE(N), DEF(N), VAL(N)
 
@@ -106,9 +106,9 @@
 !                               LE NOMBRE D'ARGUMENTS POSITIONELS ET ON
 !                               CONTINUE MALGRE LES ERREURS
 
-        INTEGER QQQOBM, LONGUEUR, QQQOENV
-        EXTERNAL QQQOBM, QQQSAP, LOW2UP, QQQTRNS, LONGUEUR
-        EXTERNAL QQQOENV, qqexit
+        INTEGER qqqobm_sa, LONGUEUR_SA, qqqoenv_sa
+        EXTERNAL qqqobm_sa, qqqsap_sa, LOW2UP_SA, qqqtrns_sa, LONGUEUR_SA
+        EXTERNAL qqqoenv_sa, qqexit_sa
         INTEGER I, POS, J, POSC, INDEX, CLLNG, POSMOIN, POSMOINC
 ! TYPE DE CLE -1=MINUS, 1=MAJUS, 0=PAREIL
         INTEGER CLTYPE(NKLEMAX)
@@ -124,14 +124,14 @@
 
         plante = abs(ii) .eq. 111
         call getenv('CCARD_OPT',ccard_args)
-        L_argenv = longueur(ccard_args)
+        L_argenv = LONGUEUR_SA(ccard_args)
         IF (L_argenv .gt. 0) THEN
           IF (ccard_args(1:L_argenv) .eq. 'ABORT') THEN
             plante = .true.
           ENDIF
         ENDIF
         call getenv('CCARD_ARGS',ccard_args)
-        L_argenv = longueur(ccard_args)
+        L_argenv = LONGUEUR_SA(ccard_args)
 
 
 !       INITIALISER LE VECTEUR DE TYPE DE CLEFS
@@ -142,9 +142,9 @@
               write(*,777) 'CCARD erreur: nom de la cle #',i,
      $                     ' > limite de 50 caracteres'
  777          format(a,i4,a)
-              if (plante) call qqexit(21)
+              if (plante) call qqexit_sa(21)
             ENDIF
-            CALL LOW2UP(INCLE(I),CLEUP)
+            CALL LOW2UP_SA(INCLE(I),CLEUP)
             DO 10 J =50,1,-1
                 IF(CLEUP(J:J) .NE. ' ') THEN
                     INDEX = J
@@ -189,18 +189,18 @@
  100    CONTINUE
         IF (PASFINI) THEN
           if (L_argenv .gt. 0) then
-            status = qqqoenv(arg,ccard_args,L_argenv)
+            status = qqqoenv_sa(arg,ccard_args,L_argenv)
           else
-            STATUS = QQQOBM(ARG,cltype(pos))
+            STATUS = qqqobm_sa(ARG,cltype(pos))
           endif
           IF(STATUS .EQ. 1) THEN
-            CALL LOW2UP(ARG,ARGUP)
+            CALL LOW2UP_SA(ARG,ARGUP)
             DO 110 J = 1,N
               CLEUP = CLE(J)
               IF (trim(ARGUP) .EQ. trim(CLEUP)) THEN
                 POSC = J
                 POS = J
-                CALL QQQTRNS(VAL(POS), DEF(POS),CLTYPE(POS))
+                CALL qqqtrns_sa(VAL(POS), DEF(POS),CLTYPE(POS))
 !              print *,'Debug+ ccard cleup=',cleup,' val(pos)=',val(pos)
                 write(keyname,109) '%%'//trim(cle(posc)),posc-pos,'%%'
  109            format(a,i4.4,a)
@@ -208,16 +208,16 @@
                 GOTO 201
               ENDIF
  110        CONTINUE
-            CLLNG = LONGUEUR(ARGUP)
+            CLLNG = LONGUEUR_SA(ARGUP)
             PRINT *,' *** ERREUR: cle ',ARGUP(1:CLLNG),' non reconnue'
-            CALL QQQSAP(CLE,DEF,VAL,N)
+            CALL qqqsap_sa(CLE,DEF,VAL,N)
             IF(PLANTE) THEN
-               CALL QQEXIT(22)
+               CALL qqexit_sa(22)
             ENDIF
  201        CONTINUE
           ELSE IF(STATUS .EQ. 2) THEN
             IF (POSC .NE. 0 .AND. CLE(POS) .EQ. CLE(POSC)) THEN
-              CALL QQQTRNS(ARGtemp,ARG,CLTYPE(POSC))
+              CALL qqqtrns_sa(ARGtemp,ARG,CLTYPE(POSC))
               VAL(POSC) = ARGtemp
 !              print *,'Debug+ ccard cle(posc)=',cle(posc),' ARGtemp=',trim(ARGtemp)
 !              print *,'Debug+ ccard val(posc)=',val(posc)
@@ -226,15 +226,15 @@
               POSC = POSC + 1
             ELSE
               PRINT *,' *** ERREUR: debordement de liste'
-              CALL QQQSAP(CLE,DEF,VAL,N)
+              CALL qqqsap_sa(CLE,DEF,VAL,N)
               IF(PLANTE) THEN
-                   CALL QQEXIT(23)
+                   CALL qqexit_sa(23)
               ENDIF
             ENDIF
           ELSE IF(STATUS .EQ. 3) THEN
             IF (POSMOINC .NE. 0 .AND. CLE(POSMOIN) .EQ. CLE(POSMOINC))
      %        THEN
-              CALL QQQTRNS(ARGtemp,ARG,CLTYPE(POSMOINC))
+              CALL qqqtrns_sa(ARGtemp,ARG,CLTYPE(POSMOINC))
               VAL(POSMOINC) = ARGtemp
               write(keyname,109)
      $             '%%'//trim(cle(posmoinc)),posmoinc-pos,'%%'
@@ -242,20 +242,20 @@
             ELSE
               PRINT *,' *** ERREUR: debordement de liste'
               PRINT *,'         ou  mode positionnel non permis'
-              CALL QQQSAP(CLE,DEF,VAL,N)
+              CALL qqqsap_sa(CLE,DEF,VAL,N)
               IF(PLANTE) THEN
-                   CALL QQEXIT(24)
+                   CALL qqexit_sa(24)
               ENDIF
             ENDIF
             POSMOINC = POSMOINC + 1
             INTERNE = INTERNE + 1
           ELSE IF(STATUS .EQ. 5) THEN
-              CALL QQQSAP(CLE,DEF,VAL,N)
+              CALL qqqsap_sa(CLE,DEF,VAL,N)
               if(associated(callback)) then
                 print *,''
                 call callback
               endif
-              CALL QQEXIT(0)
+              CALL qqexit_sa(0)
           ELSE
              PASFINI = .FALSE.
 
@@ -270,21 +270,21 @@
         RETURN
         END
 
-!**S/P  QQQOBM - OBTENIR UN NOM DE CLEF OU UNE VALEUR D'UN ARGUMENT
+!**S/P  qqqobm_sa - OBTENIR UN NOM DE CLEF OU UNE VALEUR D'UN ARGUMENT
 
-        FUNCTION QQQOBM(ARG,cltype)
+        FUNCTION qqqobm_sa(ARG,cltype)
 
-        INTEGER QQQOBM
+        INTEGER qqqobm_sa
         CHARACTER * 8192 ARG
         integer cltype
 
 !AUTEUR          J.CAVEEN, JANVIER 1991
 
-!OBJET(QQQOBM)
+!OBJET(qqqobm_sa)
 !       FONCTION QUI PERMET D'ALLER CHERCHER LES ARGUMENTS D'UNE SEQUENCE
 !       D'APPEL A UN PROGRAMME ET D'EN EXTRAIRE LES NOMS DE CLEFS ET LES
 !       VALEURS A DONNER A CES CLEFS.
-!       LA FONCTION QQQOBM RETOURNE:
+!       LA FONCTION qqqobm_sa RETOURNE:
 !            - UNE VALEUR DE 1 SI ARG CONTIENT UN NOM DE CLEF
 !            - UNE VALEUR DE 2 SI ARG CONTIENT UNE VALEUR A DONNER A UNE CLEF
 !            - UNE VALEUR DE 3 SI ARG CONTIENT UN ARGUMENT POSITIONEL
@@ -295,8 +295,8 @@
 !         ARG    SORTIE     NOM DE CLEF OU VALEUR RETOURNE
 
 !*
-        INTEGER LONGUEUR
-        EXTERNAL LONGUEUR
+        INTEGER LONGUEUR_SA
+        EXTERNAL LONGUEUR_SA
 
         LOGICAL PASDCLE, PUDCLE, PREMIER
         INTEGER ARGNUM, IINDEX, INDFIN, NARG, I, INDEB, J
@@ -315,7 +315,7 @@
           delim = ':'
         endif
 
- 100    QQQOBM = 0
+ 100    qqqobm_sa = 0
         DO 120 I = 1, 8192
           ARG(I:I) = ' '
  120    CONTINUE
@@ -340,7 +340,7 @@
      %          (INDEX(ARGUP,'-h ') .NE. 0)
      %          .OR. (INDEX(ARGUP,'-HELP') .NE. 0)
      %          .OR. (INDEX(ARGUP,'-help') .NE. 0) ))) THEN
-                 QQQOBM = 5
+                 qqqobm_sa = 5
                  RETURN
              ENDIF
 
@@ -348,7 +348,7 @@
 
 !            TROUVER LA FIN DE ARGUP
 
-             INDFIN = LONGUEUR(ARGUP)
+             INDFIN = LONGUEUR_SA(ARGUP)
          ENDIF
 
 
@@ -361,7 +361,7 @@
 !         NOM DE CLEF
 
             PASDCLE = .FALSE.
-            QQQOBM = 1
+            qqqobm_sa = 1
             IINDEX = 2
             IF(ARGUP(2:2) .EQ. '-') THEN
                 PUDCLE = .TRUE.
@@ -372,12 +372,12 @@
 ! VALEUR A DONNER
             IF(PUDCLE .OR. PASDCLE) THEN
 ! ARGUMENT POSITIONEL
-                 QQQOBM = 3
+                 qqqobm_sa = 3
                  ARG = ARGUP
                  IINDEX = INDFIN
                  RETURN
             ELSE
-                 QQQOBM = 2
+                 qqqobm_sa = 2
             ENDIF
             IF((ARGUP(IINDEX:IINDEX) .EQ. delim) .OR.
      %         (ARGUP(IINDEX:IINDEX) .EQ. '=')) then
@@ -402,22 +402,22 @@
         RETURN
         END
 
-!**S/P  QQQOENV - OBTENIR UN NOM DE CLEF OU UNE VALEUR D'UN ARGUMENT
+!**S/P  qqqoenv_sa - OBTENIR UN NOM DE CLEF OU UNE VALEUR D'UN ARGUMENT
 !                 A PARTIR D'UNE VARIABLE D'ENVIRONNEMENT CONTENANT LA
 !                 SEQUENCE D'APPEL COMPLETE
 
-        INTEGER FUNCTION QQQOENV(ARGP,CCARD_ARGS,L)
+        INTEGER FUNCTION qqqoenv_sa(ARGP,CCARD_ARGS,L)
         IMPLICIT NONE
         CHARACTER * 8192 ARGP, CCARD_ARGS
         INTEGER L
 
 !AUTEUR          M. Lepine,  Fevrier 2003
 
-!OBJET(QQQOENV)
+!OBJET(qqqoenv_sa)
 !       FONCTION QUI PERMET D'ALLER CHERCHER LES ARGUMENTS D'UNE SEQUENCE
 !       D'APPEL A UN PROGRAMME ET D'EN EXTRAIRE LES NOMS DE CLEFS ET LES
 !       VALEURS A DONNER A CES CLEFS.
-!       LA FONCTION QQQOENV RETOURNE:
+!       LA FONCTION qqqoenv_sa RETOURNE:
 !            - UNE VALEUR DE 1 SI ARG CONTIENT UN NOM DE CLEF
 !            - UNE VALEUR DE 2 SI ARG CONTIENT UNE VALEUR A DONNER A UNE CLEF
 !            - UNE VALEUR DE 3 SI ARG CONTIENT UN ARGUMENT POSITIONEL
@@ -432,8 +432,8 @@
         Logical debut, pudcle
         character c, quotechar
         character * 8192 arg
-        integer  longueur
-        external longueur
+        integer  LONGUEUR_SA
+        external LONGUEUR_SA
         SAVE        pos,debut
         DATA        debut, pudcle /.true., .false./
 
@@ -448,7 +448,7 @@
         argp = ' '
 
         if (pos > L) then
-           qqqoenv = 0        ! termine, fin de la sequence d'appel
+           qqqoenv_sa = 0        ! termine, fin de la sequence d'appel
            return
         endif
 
@@ -467,7 +467,7 @@
             quote: DO
                        if (c .eq. quotechar) EXIT quote
                   if (pos > L) then
-                  print *,'CCARD, qqqoenv error: unmatched quote'
+                  print *,'CCARD, qqqoenv_sa error: unmatched quote'
                   EXIT quote
                 endif
                 arg(i:i) = c
@@ -480,10 +480,10 @@
           endif
         END DO getarg
 
-        indfin = longueur(arg)
+        indfin = LONGUEUR_SA(arg)
 
         if ((arg(1:1) .eq. '-') .and. (.not. pudcle)) then
-           qqqoenv = 1           ! nom de cle
+           qqqoenv_sa = 1           ! nom de cle
            ic = 2                ! position de copie apres '-'
            if (arg(2:2) .eq. '-') then     ! -- passage en mode positionel
               pudcle = .true.
@@ -491,35 +491,35 @@
            endif
         else
            if (pudcle) then                ! argument positionel
-              qqqoenv = 3
+              qqqoenv_sa = 3
               ic = 1
            else
-              qqqoenv = 2                  ! valeur
+              qqqoenv_sa = 2                  ! valeur
               ic = 1
            endif
            if (arg(1:1) .eq. '=') ic = 2   ! passer le caractere d'escape
         endif
         argp = arg(ic:indfin)
-        if ((qqqoenv == 1) .and. (indfin == 2) .and.
+        if ((qqqoenv_sa == 1) .and. (indfin == 2) .and.
      % ((arg(1:2) .eq. '-h') .or. (arg(1:2) .eq. '-H') .or.
      %  (arg(1:5) .eq. '-help') .or. (arg(1:5) .eq. '-HELP') )) then
-          qqqoenv = 5                      ! sequence d'appel demande
+          qqqoenv_sa = 5                      ! sequence d'appel demande
         endif
         pos = pos + 1          ! positionnement au debut du prochain argument
 
         return
         end
 
-!**S/P - QQQTRNS - TRADUIRE ET TRANSFERER UNE VALEUR SELON LE TYPE
+!**S/P - qqqtrns_sa - TRADUIRE ET TRANSFERER UNE VALEUR SELON LE TYPE
 
-        SUBROUTINE QQQTRNS(SORTI,ENTRE,TYPE)
+        SUBROUTINE qqqtrns_sa(SORTI,ENTRE,TYPE)
 
         CHARACTER*(*) SORTI,ENTRE
         INTEGER TYPE
 
 !AUTEUR:   JAMES CAVEEN,  JUILLET 1991
 
-!OBJET(QQQTRNS) - TRADUIRE UNE VALEUR EN MAJUSCULES/MINUSCULE SELON
+!OBJET(qqqtrns_sa) - TRADUIRE UNE VALEUR EN MAJUSCULES/MINUSCULE SELON
 !                 LE TYPE DE CLE ET TRANSFERE LE RESULTAT DANS SORTI
 
 !ARGUMENTS    SORTI  SORTIE -  NOM RESULTANT DE LA TRANSFORMATION
@@ -527,21 +527,21 @@
 !             TYPE      "   - TYPE DE TRADUCTION A APPLIQUER
 
 !*
-        EXTERNAL LOW2UP, UP2LOW
+        EXTERNAL LOW2UP_SA, UP2LOW_SA
 
         IF(TYPE .EQ. 1) THEN
-           CALL LOW2UP(ENTRE,SORTI)
+           CALL LOW2UP_SA(ENTRE,SORTI)
         ELSE IF(TYPE .EQ. -1) THEN
-           CALL UP2LOW(ENTRE,SORTI)
+           CALL UP2LOW_SA(ENTRE,SORTI)
         ELSE
            SORTI = ENTRE
         ENDIF
         RETURN
         END
 
-!**S/P QQQSAP - IMPRIMER LA SEQUENCE D'APPEL AU PROGRAMME
+!**S/P qqqsap_sa - IMPRIMER LA SEQUENCE D'APPEL AU PROGRAMME
 
-        SUBROUTINE QQQSAP(CLE,DEF,VAL,N)
+        SUBROUTINE qqqsap_sa(CLE,DEF,VAL,N)
 
         INTEGER N
         CHARACTER* (*) CLE(N), DEF(N), VAL(N)
@@ -549,9 +549,9 @@
 
 !AUTEUR:  JAMES CAVEEN, JUILLET 1991
 
-!OBJET(QQQSAP) - SOUS-PROGRAMME SERVANT A IMPRIMER LA SEQUENCE D'APPEL
+!OBJET(qqqsap_sa) - SOUS-PROGRAMME SERVANT A IMPRIMER LA SEQUENCE D'APPEL
 !                AU PROGRAMME PRESENTEMENT EN EXECUTION.
-!                QQQSAP IMPRIME SUR L'UNITE 6:
+!                qqqsap_sa IMPRIME SUR L'UNITE 6:
 !                   LE NOM DU PROGRAMME, LES DIFFERENTS NOM DE CLEFS
 !                   ET LEUR PREMIERE ET DEUXIEME VALEUR DE DEFAUT.
 
@@ -563,8 +563,8 @@
 !        N        ENTREE  - NOMBRE DE CLEFS
 
 
-        INTEGER LONGUEUR
-        EXTERNAL LONGUEUR
+        INTEGER LONGUEUR_SA
+        EXTERNAL LONGUEUR_SA
 
         CHARACTER*8192 LENOM
         INTEGER I,NOMLNG,CLELNG,DEFLNG,VALLNG
@@ -576,7 +576,7 @@
 
         WRITE(6,100)
 
-        NOMLNG = LONGUEUR(LENOM)
+        NOMLNG = LONGUEUR_SA(LENOM)
         WRITE(6,*)LENOM(1:NOMLNG)
         clepre = ' '
         repcle = 0
@@ -590,9 +590,9 @@
              endif
              repcle = 0
              clepre = trim(CLE(I))
-             CLELNG = LONGUEUR(CLE(I))
-             DEFLNG = LONGUEUR(DEF(I))
-             VALLNG = LONGUEUR(VAL(I))
+             CLELNG = LONGUEUR_SA(CLE(I))
+             DEFLNG = LONGUEUR_SA(DEF(I))
+             VALLNG = LONGUEUR_SA(VAL(I))
              WRITE(6,200) CLE(I)(1:CLELNG),VAL(I)(1:VALLNG),
      %                  DEF(I)(1:DEFLNG)
            endif
@@ -606,8 +606,7 @@
  300    FORMAT(A,I4,A)
         RETURN
         END
-#if defined(STAND_ALONE)
-      INTEGER FUNCTION LONGUEUR(NOM)
+      INTEGER FUNCTION LONGUEUR_SA(NOM)
       implicit none
       CHARACTER * (*) NOM
 *
@@ -622,7 +621,7 @@
          ENDIF
  10   CONTINUE
  20   CONTINUE
-      LONGUEUR = LNG
+      LONGUEUR_SA = LNG
       RETURN
       END
 
@@ -645,7 +644,7 @@
 * * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 * * Boston, MA 02111-1307, USA.
 * */
-        SUBROUTINE UP2LOW(S1,S2)
+        SUBROUTINE UP2LOW_SA(S1,S2)
         CHARACTER * (*) S1,S2
         INTEGER I,L,L2
         L = MIN(LEN(S1),LEN(S2))
@@ -662,7 +661,7 @@
  15     CONTINUE
         RETURN
 *
-        ENTRY LOW2UP(S1,S2)
+        ENTRY LOW2UP_SA(S1,S2)
         L = MIN(LEN(S1),LEN(S2))
         L2 = LEN(S2)
         DO 20 I = 1,L
@@ -677,9 +676,8 @@
  30     CONTINUE
         RETURN
         END
-       subroutine qqexit(i)
+       subroutine qqexit_sa(i)
        integer i
        call exit(i)
        return
        end
-#endif
